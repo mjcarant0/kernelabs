@@ -9,6 +9,7 @@ export default function HeroSection() {
   const [memoryValue, setMemoryValue] = useState(52);
   const [processesValue, setProcessesValue] = useState(67);
   const [tick, setTick] = useState(0);
+  const [playBoot, setPlayBoot] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -18,6 +19,20 @@ export default function HeroSection() {
       setTick(t => t + 1);
     }, 1500);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    // Play boot animation only on first visit
+    if (typeof window === "undefined") return;
+    try {
+      const seen = localStorage.getItem("kernelabs_booted");
+      if (!seen) {
+        setPlayBoot(true);
+        localStorage.setItem("kernelabs_booted", "1");
+      }
+    } catch (e) {
+      // ignore localStorage errors
+    }
   }, []);
 
   const stats = [
@@ -51,33 +66,40 @@ export default function HeroSection() {
   ];
 
   return (
-    <section className="relative min-h-screen overflow-hidden pt-16
+    <section className={`relative min-h-screen overflow-hidden pt-16
       bg-gradient-to-b from-[#e8f4f8] via-[#f0f4f8] to-[#e8eef5]
-      dark:from-[#020b18] dark:via-[#030d1f] dark:to-[#020b18]">
+      dark:from-[#020b18] dark:via-[#030d1f] dark:to-[#020b18] hero-boot${playBoot ? " boot-run" : ""}`}>
 
       {/* ── Animated grid overlay ── */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 os-grid opacity-100" />
+        <div className="absolute inset-0 boot-grid os-grid opacity-100" />
         {/* Fade grid at bottom */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#f0f4f8]/80 dark:to-[#020b18]/80" />
       </div>
 
       {/* ── Floating glow orbs ── */}
       <div className="absolute -left-48 top-16 h-[500px] w-[500px] rounded-full
-        bg-cyan-300/20 dark:bg-cyan-500/20 blur-[100px] animate-pulse pointer-events-none"
+        bg-cyan-300/20 dark:bg-cyan-500/20 blur-[100px] animate-pulse boot-orb-1 pointer-events-none"
         style={{ animationDuration: "5s" }} />
       <div className="absolute -right-48 top-40 h-[400px] w-[400px] rounded-full
-        bg-violet-300/15 dark:bg-violet-500/15 blur-[100px] animate-pulse pointer-events-none"
+        bg-violet-300/15 dark:bg-violet-500/15 blur-[100px] animate-pulse boot-orb-2 pointer-events-none"
         style={{ animationDuration: "7s", animationDelay: "1s" }} />
       <div className="absolute left-1/2 -translate-x-1/2 bottom-0 h-[300px] w-[700px] rounded-full
-        bg-blue-300/10 dark:bg-blue-500/12 blur-[80px] pointer-events-none" />
+        bg-blue-300/10 dark:bg-blue-500/12 blur-[80px] boot-orb-3 pointer-events-none" />
 
       {/* ── Corner HUD decorations (dark only) ── */}
-      <div className="absolute top-20 left-6 hidden dark:block pointer-events-none">
+      <div className="absolute top-20 left-6 hidden dark:block pointer-events-none boot-hud">
         <div className="w-8 h-8 border-l-2 border-t-2 border-cyan-400/40" />
       </div>
-      <div className="absolute top-20 right-6 hidden dark:block pointer-events-none">
+      <div className="absolute top-20 right-6 hidden dark:block pointer-events-none boot-hud">
         <div className="w-8 h-8 border-r-2 border-t-2 border-cyan-400/40" />
+      </div>
+      {/* Bottom corners (hero only) */}
+      <div className="absolute bottom-8 left-6 pointer-events-none boot-hud">
+        <div className="w-6 h-6 border-l-2 border-b-2 border-cyan-400/30 dark:border-cyan-400/60 opacity-80" />
+      </div>
+      <div className="absolute bottom-8 right-6 pointer-events-none boot-hud">
+        <div className="w-6 h-6 border-r-2 border-b-2 border-cyan-400/30 dark:border-cyan-400/60 opacity-80" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-24 md:py-32">
@@ -91,6 +113,8 @@ export default function HeroSection() {
               backdrop-blur-md
               text-cyan-700 dark:text-cyan-300 text-xs font-mono font-semibold
               shadow-sm dark:shadow-[0_0_20px_rgba(0,212,255,0.08)]">
+              {/* status badge anim */}
+              <div className="boot-badge" />
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500 dark:bg-cyan-400" />
@@ -101,7 +125,7 @@ export default function HeroSection() {
 
           {/* Main title */}
           <ScrollReveal delay={0.1}>
-            <h1 className="mb-6 font-black tracking-tighter leading-none">
+            <h1 className="mb-6 font-black tracking-tighter leading-none boot-title">
               <span
                 className="inline text-5xl md:text-7xl lg:text-8xl
                 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800
@@ -124,7 +148,7 @@ export default function HeroSection() {
 
           {/* Subtitle */}
           <ScrollReveal delay={0.2}>
-            <p className="mb-10 text-base md:text-xl
+            <p className="mb-10 text-base md:text-xl boot-subtitle
               text-slate-600 dark:text-slate-400
               max-w-2xl mx-auto leading-relaxed font-mono">
               <span className="text-cyan-600 dark:text-cyan-400">&gt;</span>{" "}
@@ -135,7 +159,7 @@ export default function HeroSection() {
 
           {/* CTA Buttons */}
           <ScrollReveal delay={0.3}>
-            <div className="mb-20 flex flex-col sm:flex-row justify-center gap-4">
+            <div className="mb-20 flex flex-col sm:flex-row justify-center gap-4 boot-cta">
               <CTAButton label="Get Started" href="#features" variant="primary" />
               <CTAButton label="Try Demo" href="#demo" variant="secondary" />
             </div>
@@ -143,7 +167,7 @@ export default function HeroSection() {
 
           {/* OS Dashboard Panel */}
           <ScrollReveal delay={0.4}>
-            <div className="relative mx-auto max-w-3xl">
+            <div className="relative mx-auto max-w-3xl boot-panel">
               {/* Outer glow */}
               <div className="absolute -inset-1 rounded-2xl
                 bg-gradient-to-r from-cyan-400/20 via-blue-400/15 to-violet-400/20
@@ -224,7 +248,7 @@ export default function HeroSection() {
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce boot-scroll">
         <div className="flex flex-col items-center gap-1">
           <span className="font-mono text-xs text-slate-400 dark:text-slate-600">SCROLL</span>
           <svg className="h-5 w-5 text-cyan-500 dark:text-cyan-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">

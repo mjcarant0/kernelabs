@@ -36,10 +36,7 @@ export default function DemoSection() {
   return (
     <section id="demo" className="relative overflow-hidden py-24 px-6
       bg-gradient-to-b from-[#eef4f8] via-[#f0f6fa] to-[#eef4f8]
-      dark:from-[#030d1f] dark:via-[#020b18] dark:to-[#030d1f]">
-
-      {/* Grid */}
-      <div className="absolute inset-0 os-grid opacity-60 pointer-events-none" />
+      dark:from-[#030d1f] dark:via-[#020b18] dark:to-[#030d1f] section-atmosphere">
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-300/40 dark:via-cyan-500/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-300/40 dark:via-blue-500/20 to-transparent" />
 

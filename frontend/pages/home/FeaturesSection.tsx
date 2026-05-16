@@ -17,10 +17,7 @@ export default function FeaturesSection() {
   return (
     <section id="features" className="relative overflow-hidden py-24 px-6
       bg-gradient-to-b from-[#eef4f8] via-[#f0f4f8] to-[#eef4f8]
-      dark:from-[#030d1f] dark:via-[#040f22] dark:to-[#030d1f]">
-
-      {/* Grid */}
-      <div className="absolute inset-0 os-grid opacity-60 pointer-events-none" />
+      dark:from-[#030d1f] dark:via-[#040f22] dark:to-[#030d1f] section-atmosphere">
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-300/40 dark:via-violet-500/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-300/40 dark:via-violet-500/20 to-transparent" />
 
