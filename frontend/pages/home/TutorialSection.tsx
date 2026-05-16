@@ -17,10 +17,7 @@ export default function TutorialSection() {
   return (
     <section id="how-it-works" className="relative overflow-hidden py-24 px-6
       bg-gradient-to-b from-[#e8eef5] via-[#eef4f8] to-[#e8eef5]
-      dark:from-[#020b18] dark:via-[#030d1f] dark:to-[#020b18]">
-
-      {/* Grid */}
-      <div className="absolute inset-0 os-grid opacity-60 pointer-events-none" />
+      dark:from-[#020b18] dark:via-[#030d1f] dark:to-[#020b18] section-atmosphere">
       {/* Section separator top */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-300/40 dark:via-cyan-500/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-300/40 dark:via-cyan-500/20 to-transparent" />

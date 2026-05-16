@@ -9,22 +9,13 @@ export default function Footer() {
     <footer className="relative overflow-hidden py-14 px-6
       bg-gradient-to-b from-[#e8eef5] to-[#dde6f0]
       dark:from-[#020b18] dark:to-[#010810]
-      border-t border-cyan-300/30 dark:border-cyan-500/10">
-
-      {/* Grid overlay */}
-      <div className="absolute inset-0 os-grid opacity-40 pointer-events-none" />
+      border-t border-cyan-300/30 dark:border-cyan-500/10 section-atmosphere">
 
       {/* Top glow line */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px
         bg-gradient-to-r from-transparent via-cyan-400/50 dark:via-cyan-500/30 to-transparent" />
 
-      {/* Corner HUD */}
-      <div className="absolute bottom-8 left-6 hidden dark:block pointer-events-none">
-        <div className="w-6 h-6 border-l border-b border-cyan-500/20" />
-      </div>
-      <div className="absolute bottom-8 right-6 hidden dark:block pointer-events-none">
-        <div className="w-6 h-6 border-r border-b border-cyan-500/20" />
-      </div>
+      {/* Footer: corner accents removed to keep hero as unique framed panel */}
 
       <div className="relative z-10 mx-auto max-w-6xl">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-4 mb-10">
