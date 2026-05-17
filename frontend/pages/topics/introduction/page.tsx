@@ -217,3 +217,46 @@ const pages = [
       </p>
     </Section>
   </>,
+
+   <>
+    <Section number="1.6" title="Batch Systems">
+      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+        This is the <strong className="text-cyan-600 dark:text-cyan-400 font-semibold">first rudimentary operating system</strong>.
+        It reduces setup time by batching similar jobs or jobs with common needs. The machine runs
+        only one application at a time and implements automatic job sequencing that automatically
+        transfers control from one job to another.
+      </p>
+    </Section>
+
+    <Section number="1.7" title="Multiprogramming Systems">
+      <SubSection
+        number="1.7.1"
+        title="Concept"
+        description="In multiprogramming operating systems, some commands are executed from one program, then that program is suspended, and then some commands are executed from the next program, and so on."
+      />
+      <SubSection number="1.7.2" title="CPU Utilization and Job Scheduling">
+        <BulletList items={[
+          "While one program (job) is waiting for an I/O operation to complete, the CPU is switched to execute another program rather than remaining idle during I/O time.",
+          "A program is resumed at the point where it was suspended when it gets its turn to use the CPU again.",
+        ]} />
+      </SubSection>
+      <SubSection number="1.7.3" title="Features Required">
+        <BulletList items={[
+          "Job scheduling — the system must choose among several jobs to be brought into memory.",
+          "Memory management — the system must allocate the memory to several jobs.",
+          "CPU scheduling — the system must choose among several jobs ready to run.",
+          "Allocation of devices.",
+        ]} />
+      </SubSection>
+    </Section>
+
+    <Section number="1.8" title="Time-Sharing Systems">
+      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+        This system allows <strong className="text-cyan-600 dark:text-cyan-400 font-semibold">many users to share one machine simultaneously</strong>.
+        The CPU is multiplexed among several jobs that are kept in memory and on disk since the CPU
+        is allocated to a job only if the job is in memory. A job is swapped in and out of memory
+        to the disk.
+      </p>
+    </Section>
+  </>,
+];
