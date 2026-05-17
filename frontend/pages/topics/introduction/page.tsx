@@ -260,3 +260,91 @@ const pages = [
     </Section>
   </>,
 ];
+
+ <section className="py-20 px-6">
+        <div className="mx-auto max-w-4xl">
+
+          {/* dot indicators */}
+          <div className="flex items-center justify-center gap-2 mb-10">
+            {pages.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => { setCurrentPage(i); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className={`h-1.5 rounded-full transition-all duration-300
+                  ${i === currentPage
+                    ? "w-8 bg-cyan-500"
+                    : "w-3 bg-slate-300 dark:bg-slate-700 hover:bg-cyan-300 dark:hover:bg-cyan-700"}`}
+              />
+            ))}
+          </div>
+
+          {/* page label */}
+          <p className="text-center font-mono text-xs text-slate-400 dark:text-slate-600 mb-8">
+            {currentPage === 0 && "Sections 1.1 – 1.2"}
+            {currentPage === 1 && "Sections 1.3 – 1.5"}
+            {currentPage === 2 && "Sections 1.6 – 1.8"}
+          </p>
+
+          {/* rendered page */}
+          <div key={currentPage}>
+            {pages[currentPage]}
+          </div>
+
+          {/* pagination controls */}
+          <div className="mt-8 flex items-center justify-between">
+            <button
+              onClick={handlePrev}
+              disabled={currentPage === 0}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
+                border border-slate-200 dark:border-slate-800
+                text-slate-600 dark:text-slate-400
+                hover:border-cyan-300/60 dark:hover:border-cyan-500/40
+                hover:text-cyan-600 dark:hover:text-cyan-400
+                disabled:opacity-30 disabled:cursor-not-allowed
+                transition-colors duration-200 font-mono text-sm">
+              ← Previous
+            </button>
+
+            <span className="font-mono text-xs text-slate-400 dark:text-slate-600">
+              {currentPage + 1} / {totalPages}
+            </span>
+
+            {currentPage < totalPages - 1 ? (
+              <button
+                onClick={handleNext}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
+                  border border-cyan-300/60 dark:border-cyan-500/30
+                  bg-cyan-50/60 dark:bg-cyan-950/40
+                  text-cyan-600 dark:text-cyan-400
+                  hover:bg-cyan-100/80 dark:hover:bg-cyan-900/40
+                  transition-colors duration-200 font-mono text-sm">
+                Next →
+              </button>
+            ) : (
+              <Link href="/topics/processes"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
+                  border border-cyan-300/60 dark:border-cyan-500/30
+                  bg-cyan-50/60 dark:bg-cyan-950/40
+                  text-cyan-600 dark:text-cyan-400
+                  hover:bg-cyan-100/80 dark:hover:bg-cyan-900/40
+                  transition-colors duration-200 font-mono text-sm">
+                Processes →
+              </Link>
+            )}
+          </div>
+
+          {/* back to topics */}
+          <div className="mt-6 text-center">
+            <Link href="/topics"
+              className="font-mono text-xs text-slate-400 hover:text-cyan-500 transition-colors duration-200">
+              ← Back to Topics
+            </Link>
+          </div>
+
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}
