@@ -135,3 +135,85 @@ const pages = [
         description="These include people, machines, and other computers."
       />
     </Section>
+
+     <>
+    <Section number="1.3" title="Goals of an Operating System">
+      <BulletList items={[
+        {
+          text: "To provide a convenient environment",
+          sub: [
+            "Execute user programs and make solving user problems easier by hiding messy details that must be performed.",
+            "Make the computer system convenient to use by presenting the user with a virtual machine, easier to use.",
+          ],
+        },
+        {
+          text: "To use the computer hardware in an efficient manner by ensuring good performance.",
+        },
+      ]} />
+    </Section>
+
+    <Section number="1.4" title="OS Perspectives">
+      <div className="space-y-4">
+        {[
+          {
+            label: "Resource Allocator",
+            color: "cyan",
+            points: [
+              "Manages and allocates resources.",
+              "Each program gets time with the resource.",
+              "Each program gets space on the resource.",
+            ],
+          },
+          {
+            label: "Control Program",
+            color: "purple",
+            points: [
+              "Controls the execution of user programs and operations of I/O devices.",
+              "Prevents errors and improper use of the computer.",
+            ],
+          },
+          {
+            label: "The Kernel",
+            color: "slate",
+            points: [
+              "The one program running at all times.",
+              "All else are application programs.",
+            ],
+          },
+        ].map((item) => (
+          <div key={item.label}
+            className={`p-4 rounded-xl border
+              ${item.color === "cyan"
+                ? "border-cyan-200 dark:border-cyan-500/20 bg-cyan-50/50 dark:bg-cyan-950/30"
+                : item.color === "purple"
+                ? "border-purple-200 dark:border-purple-500/20 bg-purple-50/50 dark:bg-purple-950/30"
+                : "border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30"}`}>
+            <p className={`font-semibold mb-2
+              ${item.color === "cyan"
+                ? "text-cyan-700 dark:text-cyan-400"
+                : item.color === "purple"
+                ? "text-purple-700 dark:text-purple-400"
+                : "text-slate-700 dark:text-slate-300"}`}>
+              {item.label}
+            </p>
+            <ul className="space-y-1">
+              {item.points.map((p, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+                  <span className="mt-2 w-1 h-1 rounded-full bg-current flex-shrink-0 opacity-50" />
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </Section>
+
+    <Section number="1.5" title="Early Computer Systems">
+      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+        First computers were used to tackle <strong className="text-slate-700 dark:text-slate-300 font-medium">commercial and scientific</strong> applications.
+        Physically large machines run from a console. Input devices include card readers and tape drives
+        while output devices include card punch, tape drives, and line printers.
+      </p>
+    </Section>
+  </>,
