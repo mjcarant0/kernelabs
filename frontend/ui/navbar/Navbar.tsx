@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useTheme } from "next-themes";
 
 export default function Navbar() {
@@ -20,11 +21,11 @@ export default function Navbar() {
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
 
   const navLinks = [
-    { label: "Home", href: "#" },
-    { label: "Features", href: "#features" },
-    { label: "Topics", href: "#topics" },
-    { label: "Demo", href: "#demo" },
-    { label: "About", href: "#about" },
+    { label: "Home", href: "/" },
+    { label: "Features", href: "/#features" },
+    { label: "Topics", href: "/#topics" },
+    { label: "Demo", href: "/#demo" },
+    { label: "About", href: "/about" },
   ];
 
   if (!mounted) {
@@ -41,7 +42,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
 
           {/* Logo */}
-          <a href="#" className="group flex items-center gap-2">
+          <Link href="/" className="group flex items-center gap-2" onClick={() => setIsOpen(false)}>
             <div className="flex items-center gap-1 px-3 py-1.5 rounded-md
               border border-cyan-400/40 dark:border-cyan-400/30
               bg-cyan-50/80 dark:bg-cyan-950/50
@@ -51,12 +52,12 @@ export default function Navbar() {
               <span className="font-mono font-black text-sm tracking-tight text-cyan-600 dark:text-cyan-300">labs</span>
               <span className="w-0.5 h-3.5 bg-cyan-500 dark:bg-cyan-400 animate-blink ml-0.5" />
             </div>
-          </a>
+          </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.label}
                 href={link.href}
                 className="relative px-4 py-2 font-mono text-sm
@@ -67,9 +68,9 @@ export default function Navbar() {
               >
                 {link.label}
                 <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-px w-0
-                  bg-gradient-to-r from-cyan-500 to-blue-500
+                  bg-linear-to-r from-cyan-500 to-blue-500
                   group-hover:w-4 transition-all duration-300" />
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -98,10 +99,10 @@ export default function Navbar() {
             </button>
 
             {/* Get Started */}
-            <a href="#features"
+            <Link href="/#features"
               className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl
                 font-mono font-semibold text-sm text-white
-                bg-gradient-to-r from-cyan-500 to-blue-600
+                bg-linear-to-r from-cyan-500 to-blue-600
                 hover:from-cyan-400 hover:to-blue-500
                 shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40
                 transition-all duration-300 hover:-translate-y-0.5">
@@ -109,7 +110,7 @@ export default function Navbar() {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
-            </a>
+            </Link>
 
             {/* Hamburger */}
             <button
@@ -133,7 +134,7 @@ export default function Navbar() {
         {isOpen && (
           <div className="mt-3 pb-3 border-t border-slate-200 dark:border-cyan-500/10 pt-3 md:hidden flex flex-col gap-1">
             {navLinks.map((link) => (
-              <a key={link.label} href={link.href}
+              <Link key={link.label} href={link.href}
                 onClick={() => setIsOpen(false)}
                 className="px-4 py-2.5 font-mono text-sm
                   text-slate-700 dark:text-slate-300
@@ -141,13 +142,13 @@ export default function Navbar() {
                   hover:bg-cyan-50/60 dark:hover:bg-cyan-950/40
                   rounded-lg transition-all">
                 <span className="text-cyan-500 dark:text-cyan-500 mr-1">&gt;</span> {link.label}
-              </a>
+              </Link>
             ))}
-            <a href="#features"
+            <Link href="/#features"
               className="mt-2 mx-4 py-2.5 text-center font-mono text-sm font-semibold
-                bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl">
+                bg-linear-to-r from-cyan-500 to-blue-600 text-white rounded-xl">
               Get Started
-            </a>
+            </Link>
           </div>
         )}
       </div>
