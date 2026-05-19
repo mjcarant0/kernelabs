@@ -34,12 +34,10 @@ export default function FeatureCard({ icon, title, description, accent = "cyan",
       neon-border-cyan
       ${className}`}>
 
-      {/* Top accent line */}
       <div className={`absolute top-0 left-4 right-4 h-px
         bg-gradient-to-r from-transparent ${a.line} to-transparent
         opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
 
-      {/* Corner glow */}
       <div className={`absolute -right-4 -top-4 h-20 w-20 rounded-full ${a.orb} blur-xl
         opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 

@@ -12,7 +12,6 @@ export default function CustomCursor() {
   const mouseX = useMotionValue(-100);
   const mouseY = useMotionValue(-100);
 
-  // smooth spring for premium motion
   const springConfig = { damping: 22, stiffness: 250 };
   const x = useSpring(mouseX, springConfig);
   const y = useSpring(mouseY, springConfig);

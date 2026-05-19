@@ -69,7 +69,7 @@ export default function DemoSection() {
           </div>
         </ScrollReveal>
 
-        {/* Demo cards — same style as TopicCard + Launch button */}
+        {/* Demo cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {demos.map((demo, index) => (
             <ScrollReveal key={demo.title} delay={index * 0.1 + 0.1}>
@@ -83,19 +83,16 @@ export default function DemoSection() {
                 hover:border-cyan-300/60 dark:hover:border-cyan-500/30
                 p-6">
 
-                {/* Hover gradient */}
                 <div className="absolute inset-0 rounded-2xl
                   bg-gradient-to-br from-cyan-500/0 to-blue-500/0
                   group-hover:from-cyan-500/5 dark:group-hover:from-cyan-500/10
                   group-hover:to-blue-500/3 dark:group-hover:to-blue-500/5
                   transition-all duration-500" />
 
-                {/* Glow orb */}
                 <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full
                   bg-cyan-400/10 dark:bg-cyan-500/20 blur-xl
                   opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                {/* Arrow on hover */}
                 <div className="absolute top-4 right-4
                   opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0
                   transition-all duration-300">

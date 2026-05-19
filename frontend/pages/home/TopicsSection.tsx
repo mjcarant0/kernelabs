@@ -3,6 +3,7 @@
 import React from "react";
 import TopicCard from "../../ui/cards/TopicCard";
 import ScrollReveal from "../../ui/animations/ScrollReveal";
+import Link from "next/link";
 
 export default function TopicsSection() {
   const topics = [
@@ -13,6 +14,15 @@ export default function TopicsSection() {
     { icon: "📚", title: "Virtual Memory", description: "Paging, segmentation, and demand paging strategies." },
     { icon: "⛓️", title: "Deadlocks", description: "Deadlock detection, prevention, and recovery mechanisms." },
   ];
+
+  const topicRoutes: Record<string, string> = {
+    "Introduction": "/topics/introduction",
+    "Processes": "#",
+    "CPU Scheduling": "#",
+    "Memory Management": "#",
+    "Virtual Memory": "#",
+    "Deadlocks": "#",
+  };
 
   return (
     <section id="topics" className="relative overflow-hidden py-24 px-6
@@ -53,10 +63,40 @@ export default function TopicsSection() {
                 icon={topic.icon}
                 title={topic.title}
                 description={topic.description}
+                href={topicRoutes[topic.title]}
               />
             </ScrollReveal>
           ))}
         </div>
+
+        {/* See All Button */}
+        <ScrollReveal delay={0.6}>
+          <div className="mt-12 flex justify-center">
+            <Link href="/topics">
+              <button className="relative group px-8 py-3 text-base font-semibold
+                bg-gradient-to-r from-cyan-500 to-blue-500 dark:from-cyan-400 dark:to-blue-400
+                text-white dark:text-slate-900
+                rounded-lg
+                transition-all duration-300
+                hover:shadow-lg hover:shadow-cyan-500/50 dark:hover:shadow-cyan-500/40
+                hover:-translate-y-0.5
+                active:translate-y-0">
+                {/* Button glow effect */}
+                <div className="absolute inset-0 rounded-lg
+                  bg-gradient-to-r from-cyan-400/0 to-blue-400/0
+                  group-hover:from-cyan-400/20 group-hover:to-blue-400/20
+                  transition-all duration-300 blur-lg" />
+                
+                <span className="relative flex items-center gap-2">
+                  See All Topics
+                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </button>
+            </Link>
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );
