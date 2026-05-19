@@ -53,7 +53,7 @@ export default function DevSection() {
       bg-gradient-to-b from-[#eef4f8] via-[#f0f4f8] to-[#eef4f8]
       dark:from-[#030d1f] dark:via-[#040f22] dark:to-[#030d1f]">
 
-      {/* Glow orbs — no grid */}
+      {/* Glow orbs */}
       <div className="absolute top-1/3 left-1/4 w-80 h-80 rounded-full
         bg-cyan-300/8 dark:bg-cyan-500/8 blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/3 right-1/4 w-72 h-72 rounded-full

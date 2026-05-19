@@ -19,9 +19,7 @@ export default function RootLayout({
       className="h-full antialiased scroll-smooth"
       suppressHydrationWarning
     >
-      {/* suppressHydrationWarning on body silences false positives from
-          browser extensions (e.g. Grammarly) that inject data-* attributes
-          onto the body tag before React hydrates. */}
+      
       <body
         className="min-h-full flex flex-col transition-colors duration-300"
         suppressHydrationWarning

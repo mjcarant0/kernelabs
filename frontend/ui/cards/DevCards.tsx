@@ -74,11 +74,10 @@ export default function DevCard({
       ${a.hoverShadow}
       ${a.hoverBorder}`}
     >
-      {/* Top accent line */}
+      
       <div className={`absolute top-0 left-0 right-0 h-px
         bg-gradient-to-r from-transparent ${a.topLine} to-transparent`} />
 
-      {/* Subtle hover glow orb */}
       <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-20 rounded-full
         opacity-0 group-hover:opacity-100 transition-opacity duration-500
         bg-white/20 dark:bg-white/5 blur-2xl pointer-events-none" />
@@ -95,7 +94,6 @@ export default function DevCard({
             bg-slate-100 dark:bg-slate-800
             flex items-center justify-center">
             {image && !image.includes("placeholder") ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={image}
                 alt={name}
@@ -108,7 +106,6 @@ export default function DevCard({
             )}
           </div>
 
-          {/* Online dot */}
           <div className={`absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full
             border-2 border-white dark:border-[#07111f] ${a.dot}`} />
         </div>

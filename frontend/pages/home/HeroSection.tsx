@@ -31,7 +31,6 @@ export default function HeroSection() {
         localStorage.setItem("kernelabs_booted", "1");
       }
     } catch (e) {
-      // ignore localStorage errors
     }
   }, []);
 
@@ -70,14 +69,14 @@ export default function HeroSection() {
       bg-gradient-to-b from-[#e8f4f8] via-[#f0f4f8] to-[#e8eef5]
       dark:from-[#020b18] dark:via-[#030d1f] dark:to-[#020b18] hero-boot${playBoot ? " boot-run" : ""}`}>
 
-      {/* ── Animated grid overlay ── */}
+      {/* Animated grid overlay */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 boot-grid os-grid opacity-100" />
         {/* Fade grid at bottom */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#f0f4f8]/80 dark:to-[#020b18]/80" />
       </div>
 
-      {/* ── Floating glow orbs ── */}
+      {/* Floating glow orbs */}
       <div className="absolute -left-48 top-16 h-[500px] w-[500px] rounded-full
         bg-cyan-300/20 dark:bg-cyan-500/20 blur-[100px] animate-pulse boot-orb-1 pointer-events-none"
         style={{ animationDuration: "5s" }} />
@@ -87,12 +86,12 @@ export default function HeroSection() {
       <div className="absolute left-1/2 -translate-x-1/2 bottom-0 h-[300px] w-[700px] rounded-full
         bg-blue-300/10 dark:bg-blue-500/12 blur-[80px] boot-orb-3 pointer-events-none" />
 
-      {/* ── Corner HUD decorations (dark only) ── */}
-      <div className="absolute top-20 left-6 hidden dark:block pointer-events-none boot-hud">
-        <div className="w-8 h-8 border-l-2 border-t-2 border-cyan-400/40" />
+      {/* Corner HUD decorations */}
+      <div className="absolute top-20 left-6 pointer-events-none boot-hud">
+        <div className="w-8 h-8 border-l-2 border-t-2 border-cyan-400/30 dark:border-cyan-400/60 opacity-80" />
       </div>
-      <div className="absolute top-20 right-6 hidden dark:block pointer-events-none boot-hud">
-        <div className="w-8 h-8 border-r-2 border-t-2 border-cyan-400/40" />
+      <div className="absolute top-20 right-6 pointer-events-none boot-hud">
+        <div className="w-8 h-8 border-r-2 border-t-2 border-cyan-400/30 dark:border-cyan-400/60 opacity-80" />
       </div>
       {/* Bottom corners (hero only) */}
       <div className="absolute bottom-8 left-6 pointer-events-none boot-hud">
