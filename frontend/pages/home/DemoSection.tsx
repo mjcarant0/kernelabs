@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import TopicCard from "../../ui/cards/TopicCard";
+import Link from "next/link";
 import CTAButton from "../../ui/buttons/CTAButton";
 import ScrollReveal from "../../ui/animations/ScrollReveal";
 
@@ -11,25 +11,25 @@ export default function DemoSection() {
       icon: "⚙️",
       title: "CPU Scheduling",
       description: "Visualize how the CPU scheduler manages processes with FCFS, SJF, Round Robin, and Priority algorithms.",
-      href: "#",
+      href: "/demo/cpu-scheduling",
     },
     {
       icon: "💾",
       title: "Memory Management",
       description: "Explore memory allocation strategies including First Fit, Best Fit, and Worst Fit in real-time.",
-      href: "#",
+      href: "/demo/memory-management",
     },
     {
       icon: "🔄",
       title: "Virtual Memory",
       description: "Simulate paging, segmentation, and page replacement algorithms with live visualizations.",
-      href: "#",
+      href: "/demo/virtual-memory",
     },
     {
       icon: "⛓️",
       title: "Deadlock",
       description: "Understand deadlock conditions and explore detection, prevention, and recovery strategies.",
-      href: "#",
+      href: "/demo/deadlock",
     },
   ];
 
@@ -40,15 +40,12 @@ export default function DemoSection() {
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-300/40 dark:via-cyan-500/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-300/40 dark:via-blue-500/20 to-transparent" />
 
-      {/* Glow orbs */}
       <div className="absolute -right-40 top-1/2 -translate-y-1/2 w-96 h-96 rounded-full
         bg-cyan-300/10 dark:bg-cyan-500/12 blur-3xl pointer-events-none" />
       <div className="absolute -left-40 bottom-0 w-80 h-80 rounded-full
         bg-purple-300/8 dark:bg-purple-500/10 blur-3xl pointer-events-none" />
 
       <div className="relative z-10 mx-auto max-w-6xl">
-
-        {/* Heading */}
         <ScrollReveal delay={0}>
           <div className="mb-16 text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-5
@@ -69,11 +66,10 @@ export default function DemoSection() {
           </div>
         </ScrollReveal>
 
-        {/* Demo cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {demos.map((demo, index) => (
             <ScrollReveal key={demo.title} delay={index * 0.1 + 0.1}>
-              <div className="group relative cursor-pointer overflow-hidden rounded-2xl
+              <Link href={demo.href} className="block group relative cursor-pointer overflow-hidden rounded-2xl
                 border border-slate-200/70 dark:border-white/8
                 bg-white/70 dark:bg-slate-900/50
                 backdrop-blur-xl
@@ -115,7 +111,7 @@ export default function DemoSection() {
                   </p>
                   <CTAButton label="Launch Simulator" href={demo.href} variant="secondary" />
                 </div>
-              </div>
+              </Link>
             </ScrollReveal>
           ))}
         </div>
