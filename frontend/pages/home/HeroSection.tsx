@@ -22,7 +22,7 @@ export default function HeroSection() {
   }, []);
 
   useEffect(() => {
-    // Play boot animation only on first visit
+    // play boot animation once
     if (typeof window === "undefined") return;
     try {
       const seen = localStorage.getItem("kernelabs_booted");
@@ -69,14 +69,14 @@ export default function HeroSection() {
       bg-gradient-to-b from-[#e8f4f8] via-[#f0f4f8] to-[#e8eef5]
       dark:from-[#020b18] dark:via-[#030d1f] dark:to-[#020b18] hero-boot${playBoot ? " boot-run" : ""}`}>
 
-      {/* Animated grid overlay */}
+      {/* grid overlay */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 boot-grid os-grid opacity-100" />
         {/* Fade grid at bottom */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#f0f4f8]/80 dark:to-[#020b18]/80" />
       </div>
 
-      {/* Floating glow orbs */}
+      {/* glow orbs */}
       <div className="absolute -left-48 top-16 h-[500px] w-[500px] rounded-full
         bg-cyan-300/20 dark:bg-cyan-500/20 blur-[100px] animate-pulse boot-orb-1 pointer-events-none"
         style={{ animationDuration: "5s" }} />

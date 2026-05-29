@@ -1,5 +1,4 @@
-/* Display all available topics */
-
+// Topics page
 "use client";
 
 import React from "react";
@@ -25,7 +24,74 @@ export default function TopicsPage() {
         "Learn the fundamental concepts of Operating Systems. Understand what an OS is, its history, and core functions in modern computing. Perfect for beginners!",
       href: "/topics/introduction",
     },
+    {
+      id: "structures",
+      name: "Operating System Structure",
+      shortDescription: "OS Architecture and Components",
+      description:
+        "Explore how operating systems are organized, from the kernel and system calls to user space services and core subsystems.",
+      href: "/topics/structures",
+    },
+    {
+      id: "processes",
+      name: "Processes",
+      shortDescription: "Lifecycle and Control",
+      description:
+        "Understand process creation, scheduling states, context switching, and how the OS manages running programs.",
+      href: "/topics/processes",
+    },
+    {
+      id: "scheduling",
+      name: "CPU Scheduling",
+      shortDescription: "CPU Allocation Algorithms",
+      description:
+        "Compare scheduling strategies such as FCFS, SJF, priority, and round robin to see how the OS shares processor time.",
+      href: "/topics/scheduling",
+    },
+    {
+      id: "management",
+      name: "Memory Management",
+      shortDescription: "Main Memory Allocation",
+      description:
+        "Learn how operating systems allocate, protect, and share memory using paging, segmentation, and allocation strategies.",
+      href: "/topics/management",
+    },
+    {
+      id: "virtual",
+      name: "Virtual Memory",
+      shortDescription: "Paging and Demand Paging",
+      description:
+        "Discover how virtual memory extends physical memory with page tables, swapping, and demand paging.",
+      href: "/topics/virtual",
+    },
+    {
+      id: "mass",
+      name: "Mass Storage Management",
+      shortDescription: "Storage Devices and File Systems",
+      description:
+        "Study disks, SSDs, storage organization, disk scheduling, and the techniques used to manage long-term data storage.",
+      href: "/topics/mass",
+    },
+    {
+      id: "deadlock",
+      name: "Deadlock",
+      shortDescription: "Detection, Prevention, Recovery",
+      description:
+        "Understand how deadlocks happen, how to prevent them, how to detect them, and the ways an OS can recover safely.",
+      href: "/topics/deadlock",
+    },
   ];
+
+  const topicEmojis: Record<string, string> = {
+    introduction: "📖",
+    structures: "🏗️",
+    processes: "⚙️",
+    scheduling: "🧵",
+    management: "🧠",
+    virtual: "🪟",
+    mass: "💾",
+    deadlock: "⛓️",
+  };
 
   return (
     <div className="min-h-screen bg-linear-to-br from-(--bg-primary) via-[color-mix(in_srgb,var(--bg-primary)_82%,var(--bg-secondary))] to-(--bg-secondary) text-(--text-primary) section-atmosphere">
@@ -48,7 +114,7 @@ export default function TopicsPage() {
                 href="/"
                 className="px-4 py-2 text-sm text-(--text-primary) border border-(--card-border) bg-(--card-bg) rounded-xl hover:border-(--card-border-hover) hover:bg-(--card-bg-hover) transition-all"
               >
-                ← Back Home
+                Back Home
               </Link>
             </div>
           </div>
@@ -101,31 +167,20 @@ export default function TopicsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid w-full grid-cols-1 gap-6">
             {topics.map((topic) => (
               <TopicCard
                 key={topic.id}
-                icon="🧭"
+                icon={topicEmojis[topic.id]}
                 title={topic.name}
                 description={`${topic.shortDescription} · 1 module · immersive study flow`}
                 href={topic.href}
-                className="p-7"
+                className="w-full p-7"
               />
             ))}
           </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
-            {[
-              ["Read", "Structured content cards for faster scanning."],
-              ["Navigate", "Single-module flow with clear progress cues."],
-              ["Study", "Theme-aware surfaces for both light and dark mode."],
-            ].map(([title, description]) => (
-              <div key={title} className="glass-card rounded-2xl p-5">
-                <p className="text-sm font-semibold text-(--text-primary)">{title}</p>
-                <p className="mt-2 text-sm text-(--text-secondary) leading-relaxed">{description}</p>
-              </div>
-            ))}
-          </div>
+
         </div>
 
         <div className="border-t border-(--card-border) mt-12 py-8 bg-linear-to-b from-transparent to-[color-mix(in_srgb,var(--bg-secondary)_70%,transparent)]">

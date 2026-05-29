@@ -56,7 +56,7 @@ function allocate(
   if (validBlocks.length === 0 || validProcs.length === 0)
     return { results: [], memoryMap: [] };
 
-  // Track remaining space per block
+  // block state
   const blockState = validBlocks.map((b) => ({
     id: b.id,
     total: Number(b.size),
@@ -103,7 +103,7 @@ function allocate(
     }
   }
 
-  // Build memory map
+  // build memory map
   const memoryMap: MemoryBlockResult[] = blockState.map((b) => {
     const segments: MemoryBlockResult["segments"] = [];
     for (const alloc of b.allocations) {
@@ -240,7 +240,7 @@ export default function MemoryManagement() {
             </p>
           </div>
 
-          {/* Two tables side by side */}
+          {/* tables */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             {/* Memory Blocks table */}

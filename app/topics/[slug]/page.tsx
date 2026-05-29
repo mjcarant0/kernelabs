@@ -1,8 +1,13 @@
-/**
- Dynamic Topic Route
-**/
+// Dynamic topic route
 
 import IntroductionTopic from "@/frontend/pages/topics/introduction";
+import StructuresTopic from "@/frontend/pages/topics/structures";
+import ProcessesTopic from "@/frontend/pages/topics/processes";
+import SchedulingTopic from "@/frontend/pages/topics/scheduling";
+import ManagementTopic from "@/frontend/pages/topics/management";
+import VirtualTopic from "@/frontend/pages/topics/virtual";
+import MassTopic from "@/frontend/pages/topics/mass";
+import DeadlocksTopic from "@/frontend/pages/topics/deadlocks";
 
 interface TopicRouteProps {
   params: Promise<{
@@ -13,10 +18,24 @@ interface TopicRouteProps {
 export default async function TopicRoute({ params }: TopicRouteProps) {
   const { slug } = await params;
 
-  // Route to the correct topic based on slug
+  // Return topic component for slug
   switch (slug) {
     case "introduction":
       return <IntroductionTopic />;
+    case "structures":
+      return <StructuresTopic />;
+    case "processes":
+      return <ProcessesTopic />;
+    case "scheduling":
+      return <SchedulingTopic />;
+    case "management":
+      return <ManagementTopic />;
+    case "virtual":
+      return <VirtualTopic />;
+    case "mass":
+      return <MassTopic />;
+    case "deadlock":
+      return <DeadlocksTopic />;
     default:
       return (
         <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-(--bg-primary) via-[color-mix(in_srgb,var(--bg-primary)_72%,#0b1120)] to-(--bg-secondary)">
