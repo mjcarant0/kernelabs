@@ -1,4 +1,4 @@
-/* Central configuration for the Deadlocks topic */
+// Deadlocks topic config
 
 import { TopicConfig } from "../shared/types";
 
@@ -10,7 +10,7 @@ export const deadlocksConfig: TopicConfig = {
   shortDescription: "Deadlock Detection, Prevention, and Recovery",
 };
 
-// For future scalability - topic routing
+// topic list
 export const topicList = [
   {
     id: "introduction",
@@ -24,5 +24,5 @@ export const topicList = [
     shortDescription: "Deadlock Detection, Prevention, and Recovery",
     href: "/topics/deadlocks",
   },
-  // Future topics can be added here
+  // future topics placeholder
 ];

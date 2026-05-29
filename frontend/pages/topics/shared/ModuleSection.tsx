@@ -1,4 +1,4 @@
-/* Interactive expandable lessons with auto-close and guided progression */
+// Module section: expandable lessons and progress
 
 "use client";
 
@@ -22,13 +22,13 @@ interface ModuleSectionProps {
   onQuizStart?: () => void;
 }
 
-// Identify main topics (only X.Y format, not X.Y.Z)
+// Identify main topics (X.Y format)
 const isMainTopic = (id: string): boolean => {
   const parts = id.split("-").filter((p) => /^\d+$/.test(p));
   return parts.length === 2;
 };
 
-// Get main topic identifier from any section (e.g., "1-2-1" -> "1-2")
+// Get main topic id (e.g., "1-2-1" -> "1-2")
 const getMainTopicId = (id: string): string => {
   const parts = id.split("-").filter((p) => /^\d+$/.test(p));
   return parts.slice(0, 2).join("-");
@@ -45,32 +45,32 @@ export default function ModuleSection({
   isLastModule = false,
   onQuizStart,
 }: ModuleSectionProps) {
-  // Filter to only content sections (exclude header sections)
+  // content sections
   const contentSections = useMemo(
     () => sections.filter((s) => s.content.trim().length > 0),
     [sections]
   );
 
-  // Identify main topics only
+  // main topics
   const mainTopics = useMemo(
     () => contentSections.filter((s) => isMainTopic(s.id)),
     [contentSections]
   );
 
-  // Track completed main topics
+  // completed topics state
   const [completedTopics, setCompletedTopics] = useState<Set<string>>(new Set());
 
-  // Track currently open lesson
+  // active lesson id
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
 
-  // Calculate progress based on completed main topics (out of 8)
+  // progress percentage
   const progressPercentage = useMemo(() => {
     const totalMainTopics = 8;
     return Math.round((completedTopics.size / totalMainTopics) * 100);
   }, [completedTopics]);
 
   const handleLessonClick = (sectionId: string) => {
-    // If there was a previous active lesson, mark it as completed
+    // mark previous lesson completed
     if (activeLessonId && activeLessonId !== sectionId) {
       const mainTopicId = getMainTopicId(activeLessonId);
       setCompletedTopics((prev) => {
@@ -80,10 +80,10 @@ export default function ModuleSection({
       });
     }
 
-    // Open the new lesson (toggle if clicking same lesson)
+    // toggle lesson
     setActiveLessonId(activeLessonId === sectionId ? null : sectionId);
 
-    // Smooth scroll to the opened lesson
+    // smooth scroll to lesson
     setTimeout(() => {
       const element = document.getElementById(`lesson-${sectionId}`);
       if (element) {
@@ -101,9 +101,9 @@ export default function ModuleSection({
 
   return (
     <div className="relative">
-      {/* Content Grid: Sidebar + Main Content */}
+      {/* layout grid */}
       <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-        {/* LEFT: Navigation Sidebar */}
+        {/* sidebar */}
         <aside className="lg:sticky lg:top-32 lg:h-fit">
           <div className="rounded-2xl bg-white dark:bg-black/20 backdrop-blur-sm border border-slate-200 dark:border-white/5 p-6">
             <h3 className="font-mono text-xs uppercase tracking-[0.4em] text-cyan-600 dark:text-cyan-400 mb-6">
@@ -143,7 +143,7 @@ export default function ModuleSection({
               })}
             </nav>
 
-            {/* Progress Info */}
+            {/* progress info */}
             <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/5">
               <p className="font-mono text-xs uppercase tracking-[0.3em] text-(--text-muted) mb-3">
                 Progress
@@ -169,7 +169,7 @@ export default function ModuleSection({
           </div>
         </aside>
 
-        {/* RIGHT: Main Content Area - Accordion Lessons */}
+        {/* lessons accordion */}
         <main className="space-y-3">
           {contentSections.map((section, index) => {
             const isActive = isLessonActive(section.id);
@@ -182,7 +182,7 @@ export default function ModuleSection({
                 id={`lesson-${section.id}`}
                 className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-black/20 backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-slate-300 dark:hover:border-white/10"
               >
-                {/* Lesson Header / Trigger */}
+                {/* lesson header */}
                 <button
                   onClick={() => handleLessonClick(section.id)}
                   className={`w-full px-6 py-5 flex items-center justify-between gap-4 transition-all duration-200 ${
@@ -243,18 +243,18 @@ export default function ModuleSection({
                   </div>
                 </button>
 
-                {/* Lesson Content - Expandable */}
+                {/* lesson content */}
                 {isActive && (
                   <div className="overflow-hidden border-t border-slate-200 dark:border-white/5">
                     <div className="px-6 py-8 space-y-6 animate-in fade-in duration-300">
-                      {/* Reading Content */}
+                      {/* reading */}
                       <div className="max-w-3xl">
                         <div className="whitespace-pre-wrap font-sans text-lg leading-8 text-(--text-secondary)">
                           {section.content}
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
+                      {/* actions */}
                       {isMain && (
                         <div className="flex items-center gap-3 pt-4">
                           <button
@@ -287,7 +287,7 @@ export default function ModuleSection({
             );
           })}
 
-          {/* Quiz CTA */}
+          {/* quiz call-to-action */}
           {onQuizStart && (
             <div className="mt-8 rounded-2xl bg-cyan-50 dark:bg-cyan-500/15 border border-cyan-200 dark:border-cyan-400/20 p-8 text-center">
               <h3 className="text-xl font-semibold text-(--text-primary) mb-3">

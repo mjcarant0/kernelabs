@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import TopicCard from "../../ui/cards/TopicCard";
 import ScrollReveal from "../../ui/animations/ScrollReveal";
 import Link from "next/link";
@@ -8,21 +8,125 @@ import Link from "next/link";
 export default function TopicsSection() {
   const topics = [
     { icon: "📖", title: "Introduction", description: "Fundamentals of operating systems and kernel concepts." },
+    { icon: "🏗️", title: "Operating System Structure", description: "Components and architecture of an operating system." },
     { icon: "⚡", title: "Processes", description: "Process creation, states, and lifecycle management." },
     { icon: "🔀", title: "CPU Scheduling", description: "Scheduling algorithms and performance evaluation." },
-    { icon: "🧠", title: "Memory Management", description: "Main memory allocation and management techniques." },
-    { icon: "📚", title: "Virtual Memory", description: "Paging, segmentation, and demand paging strategies." },
-    { icon: "⛓️", title: "Deadlocks", description: "Deadlock detection, prevention, and recovery mechanisms." },
   ];
 
   const topicRoutes: Record<string, string> = {
     "Introduction": "/topics/introduction",
-    "Processes": "#",
-    "CPU Scheduling": "#",
-    "Memory Management": "#",
-    "Virtual Memory": "#",
-    "Deadlocks": "#",
+    "Operating System Structure": "/topics/structures",
+    "Processes": "/topics/processes",
+    "CPU Scheduling": "/topics/scheduling",
   };
+
+  // Topics carousel (infinite)
+  const slides = topics;
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [visibleCount, setVisibleCount] = useState(3);
+  const [slideWidth, setSlideWidth] = useState(0);
+  const [gap, setGap] = useState(24);
+  const [slideHeight, setSlideHeight] = useState(0);
+  const [index, setIndex] = useState(0); // current slide index
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // extended slides with clones for looping
+  const extended = React.useMemo(() => {
+    const before = slides.slice(-visibleCount);
+    const after = slides.slice(0, visibleCount);
+    return [...before, ...slides, ...after];
+  }, [slides, visibleCount]);
+
+  // Measure layout and set sizes on mount/resize
+  useEffect(() => {
+    function measure() {
+      const vp = viewportRef.current;
+      if (!vp) return;
+
+      const w = window.innerWidth;
+      const vc = w < 640 ? 1 : w < 1024 ? 2 : 3;
+      setVisibleCount(vc);
+
+      const track = trackRef.current;
+      const gapVal = track ? getComputedStyle(track).getPropertyValue("gap") : "24px";
+      const gapPx = Math.round(parseFloat(gapVal)) || 24;
+      setGap(gapPx);
+
+      const vpWidth = vp.clientWidth;
+      const totalGaps = gapPx * (vc - 1);
+      // compute slide width
+      const base = Math.floor((vpWidth - totalGaps) / vc);
+      const computedSlide = Math.max(120, base - 96);
+      setSlideWidth(computedSlide);
+      // compute slide height
+      const computedHeight = Math.max(120, Math.floor(computedSlide * 0.5));
+      setSlideHeight(computedHeight);
+      setSlideHeight(computedHeight);
+
+      // start index at first real slide
+      setIndex(vc);
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [slides.length]);
+
+  // snap to real slides after clone transitions
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    function onEnd() {
+      const track = trackRef.current;
+      if (!track) return;
+      setIsTransitioning(false);
+      const realStart = visibleCount;
+      const realEnd = visibleCount + slides.length - 1;
+      if (slideWidth === 0) return;
+
+      if (index > realEnd) {
+        // snap back to corresponding real slide
+        const newIndex = index - slides.length;
+        track.style.transition = "none";
+        const x = -(newIndex * (slideWidth + gap));
+        track.style.transform = `translateX(${x}px)`;
+        // force reflow
+        void track.offsetHeight;
+        // update React state
+        setIndex(newIndex);
+        // restore transition
+        requestAnimationFrame(() => {
+          track.style.transition = "transform 420ms ease";
+        });
+      } else if (index < realStart) {
+        // snap forward to corresponding real slide
+        const newIndex = index + slides.length;
+        track.style.transition = "none";
+        const x = -(newIndex * (slideWidth + gap));
+        track.style.transform = `translateX(${x}px)`;
+        void track.offsetHeight;
+        setIndex(newIndex);
+        requestAnimationFrame(() => {
+          track.style.transition = "transform 420ms ease";
+        });
+      }
+    }
+
+    el.addEventListener("transitionend", onEnd);
+    return () => el.removeEventListener("transitionend", onEnd);
+  }, [index, slides.length, visibleCount, slideWidth, gap]);
+
+  function next() {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setIndex((i) => i + 1);
+  }
+  function prev() {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setIndex((i) => i - 1);
+  }
 
   return (
     <section id="topics" className="relative overflow-hidden py-24 px-6
@@ -56,18 +160,69 @@ export default function TopicsSection() {
           </div>
         </ScrollReveal>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {topics.map((topic, index) => (
-            <ScrollReveal key={index} delay={index * 0.08 + 0.1}>
-              <TopicCard
-                icon={topic.icon}
-                title={topic.title}
-                description={topic.description}
-                href={topicRoutes[topic.title]}
-              />
-            </ScrollReveal>
-          ))}
-        </div>
+        {/* Finite carousel - shows `visibleCount` slides and disables navigation at ends */}
+        <ScrollReveal delay={0.1}>
+          <div className="relative">
+            <div className="relative flex justify-center items-center">
+              {/* viewport sized to exactly fit visibleCount slides */}
+              <div
+                ref={viewportRef}
+                className="overflow-x-hidden overflow-y-visible"
+                style={{ width: slideWidth ? `${slideWidth * visibleCount + gap * (visibleCount - 1)}px` : undefined, maxWidth: '100%', paddingTop: '6px' }}
+              >
+                <div
+                  ref={trackRef}
+                  className="flex items-stretch transition-transform duration-300"
+                  style={{
+                    gap: `${gap}px`,
+                    transform: slideWidth ? `translateX(-${index * (slideWidth + gap)}px)` : undefined,
+                  }}
+                >
+                  {extended.map((topic, i) => (
+                    <div
+                      key={i}
+                      className="slide flex-0"
+                      style={{
+                        flex: slideWidth ? `0 0 ${slideWidth}px` : undefined,
+                        height: slideHeight ? `${slideHeight}px` : undefined,
+                      }}
+                    >
+                      <TopicCard
+                        icon={topic.icon}
+                        title={topic.title}
+                        description={topic.description}
+                        href={topicRoutes[topic.title]}
+                        className="h-full flex flex-col justify-between"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Prev / Next controls positioned outside the viewport */}
+              {slideWidth && (
+                <>
+                  <button
+                    onClick={prev}
+                    aria-label="Previous"
+                    className="absolute z-20 bg-black/40 text-white p-3 rounded-full hover:bg-black/60 text-2xl"
+                    style={{ left: `calc(50% - ${(slideWidth * visibleCount + gap * (visibleCount -1)) / 2}px - 96px)` }}
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={next}
+                    aria-label="Next"
+                    className="absolute z-20 bg-black/40 text-white p-3 rounded-full hover:bg-black/60 text-2xl"
+                    style={{ right: `calc(50% - ${(slideWidth * visibleCount + gap * (visibleCount -1)) / 2}px - 96px)` }}
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </ScrollReveal>
 
         {/* See All Button */}
         <ScrollReveal delay={0.6}>

@@ -1,4 +1,4 @@
-/* Handles quiz display, answer selection, and result calculation */
+// Quiz content and scoring
 
 import React, { useState, useEffect } from "react";
 import { QuizQuestion, QuizResult } from "./types";
@@ -36,7 +36,7 @@ export default function QuizContent({ questions, onComplete }: QuizContentProps)
   };
 
   const handleSubmitQuiz = () => {
-    // Calculate score
+    // calculate score
     let correctCount = 0;
     selectedAnswers.forEach((answer, index) => {
       if (answer === questions[index].correctAnswer) {
@@ -70,9 +70,9 @@ export default function QuizContent({ questions, onComplete }: QuizContentProps)
   if (showResult && quizResult) {
     return (
       <div className="relative space-y-8">
-        {/* Results Container */}
+        {/* results */}
         <div className="text-center space-y-8">
-          {/* Score Display */}
+          {/* score */}
           <div>
             <div className="inline-flex items-center justify-center w-32 h-32 rounded-2xl bg-cyan-100 dark:bg-cyan-500/10 border border-cyan-300 dark:border-cyan-400/30 mb-6">
               <span className={`text-5xl font-bold ${
@@ -89,7 +89,7 @@ export default function QuizContent({ questions, onComplete }: QuizContentProps)
             </p>
           </div>
 
-          {/* Status Message */}
+          {/* status */}
           <div className={`rounded-xl px-6 py-4 border ${
             quizResult.passed
               ? "bg-emerald-100 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-400/30 text-emerald-700 dark:text-emerald-300"
@@ -102,7 +102,7 @@ export default function QuizContent({ questions, onComplete }: QuizContentProps)
             )}
           </div>
 
-          {/* Retake Button */}
+          {/* retake */}
           <button
             onClick={handleRetakeQuiz}
             className="px-8 py-3 text-lg font-semibold text-white bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl transition-all duration-200 shadow-lg shadow-cyan-500/20"
@@ -120,9 +120,9 @@ export default function QuizContent({ questions, onComplete }: QuizContentProps)
 
   return (
     <div className="relative space-y-8">
-      {/* Quiz Header */}
+      {/* header */}
       <div className="pb-6 border-b border-slate-200 dark:border-white/5">
-        {/* Progress Bar */}
+        {/* progress */}
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="font-mono text-sm uppercase tracking-[0.3em] text-(--text-muted)">
@@ -141,11 +141,11 @@ export default function QuizContent({ questions, onComplete }: QuizContentProps)
         </div>
       </div>
 
-      {/* Question */}
+      {/* question */}
       <div className="space-y-6">
         <h3 className="text-2xl md:text-3xl font-bold text-(--text-primary) leading-tight">{question.question}</h3>
 
-        {/* Answer Options */}
+        {/* options */}
         <div className="space-y-3">
           {question.options.map((option, index) => (
             <button
@@ -174,7 +174,7 @@ export default function QuizContent({ questions, onComplete }: QuizContentProps)
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* navigation */}
       <div className="flex items-center justify-between pt-6 border-t border-slate-200 dark:border-white/5">
         <button
           onClick={handlePrevious}

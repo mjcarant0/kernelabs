@@ -21,14 +21,14 @@ const algorithmInfo: Record<Algorithm, { label: string; description: string }> =
   },
 };
 
-// ─── Paging ───────────────────────────────────────────────────────────────────
+// paging
 interface PageEntry {
   pageNumber: string;
   frameNumber: string;
   validBit: "1" | "0";
 }
 
-// ─── Segmentation ─────────────────────────────────────────────────────────────
+// segmentation
 interface Segment {
   segmentId: string;
   base: string;
@@ -37,7 +37,7 @@ interface Segment {
   label: string;
 }
 
-// ─── Page Replacement ─────────────────────────────────────────────────────────
+// page replacement
 interface ReplacementStep {
   page: number;
   frames: (number | null)[];
@@ -156,7 +156,7 @@ export default function VirtualMemory() {
   const [numFrames, setNumFrames] = useState("3");
   const [replacementAlgo, setReplacementAlgo] = useState<ReplacementAlgo>("FIFO");
 
-  // ── Paging handlers ──
+  // paging handlers
   function updatePage(i: number, field: keyof PageEntry, value: string) {
     setPageEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
   }
@@ -168,7 +168,7 @@ export default function VirtualMemory() {
     setPageEntries((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  // ── Segmentation handlers ──
+  // segmentation handlers
   function updateSegment(i: number, field: keyof Segment, value: string) {
     setSegments((prev) => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
   }
@@ -180,7 +180,7 @@ export default function VirtualMemory() {
     setSegments((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  // ── Page replacement compute ──
+  // page replacement compute
   const refs = refString.trim().split(/\s+/).map(Number).filter((n) => !isNaN(n));
   const frames = Math.max(1, parseInt(numFrames) || 1);
   const steps = selected === "PageReplacement"
@@ -263,7 +263,7 @@ export default function VirtualMemory() {
             </p>
           </div>
 
-          {/* ── PAGING ── */}
+          {/* paging */}
           {selected === "Paging" && (
             <>
               <div className="rounded-2xl border border-slate-200/70 dark:border-white/8
@@ -379,7 +379,7 @@ export default function VirtualMemory() {
             </>
           )}
 
-          {/* ── SEGMENTATION ── */}
+          {/* segmentation */}
           {selected === "Segmentation" && (
             <>
               <div className="rounded-2xl border border-slate-200/70 dark:border-white/8
@@ -482,7 +482,7 @@ export default function VirtualMemory() {
             </>
           )}
 
-          {/* ── PAGE REPLACEMENT ── */}
+          {/* page replacement */}
           {selected === "PageReplacement" && (
             <>
               {/* Sub-algorithm selector + inputs */}

@@ -79,12 +79,12 @@ export default function DeadlocksTopic() {
             />
           ) : (
             <QuizSection>
-              <QuizContent
-                questions={quizQuestions}
-                onComplete={() => {
-                  // Quiz completion is handled within QuizContent
-                }}
-              />
+                  <QuizContent
+                    questions={quizQuestions}
+                    onComplete={() => {
+                      // handled by QuizContent
+                    }}
+                  />
             </QuizSection>
           )}
         </div>

@@ -6,7 +6,7 @@ import VirtualMemory from "./VirtualMemory";
 import Deadlock from "./Deadlock";
 import Link from "next/link";
 
-// This is the router — it looks at the slug and picks the right page
+// Demo router: map slug to page
 const pages: Record<string, React.ComponentType> = {
   "cpu-scheduling": CpuScheduling,
   "memory-management": MemoryManagement,
@@ -21,7 +21,7 @@ interface Props {
 export default function DemoIndex({ slug }: Props) {
   const Page = pages[slug];
 
-  // If the slug doesn't match any page, show a not found message
+  // show not found if page missing
   if (!Page) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
@@ -35,6 +35,6 @@ export default function DemoIndex({ slug }: Props) {
     );
   }
 
-  // Render the matching page
+  // render page
   return <Page />;
 }

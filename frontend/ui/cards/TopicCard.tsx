@@ -22,7 +22,7 @@ export default function TopicCard({ icon, title, description, href = "#", classN
       hover:shadow-lg hover:shadow-violet-500/10 dark:hover:shadow-violet-500/15
       hover:border-violet-300/60 dark:hover:border-violet-500/30
       neon-border-cyan
-      p-5 ${className}`}>
+      p-3 ${className}`}> 
 
       {/* Hover gradient */}
       <div className="absolute inset-0 rounded-2xl

@@ -1,4 +1,4 @@
-/* Central configuration for the Introduction topic */
+// Introduction topic config
 
 import { TopicConfig } from "../shared/types";
 
@@ -10,7 +10,7 @@ export const introductionConfig: TopicConfig = {
   shortDescription: "Foundations of Operating Systems",
 };
 
-// For future scalability - topic routing
+// topic list
 export const topicList = [
   {
     id: "introduction",
@@ -18,7 +18,7 @@ export const topicList = [
     shortDescription: "Foundations of Operating Systems",
     href: "/topics/introduction",
   },
-  // Future topics can be added here
+  // future topics placeholder
   // {
   //   id: "file-systems",
   //   name: "File Systems",

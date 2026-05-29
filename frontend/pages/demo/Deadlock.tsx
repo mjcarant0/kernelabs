@@ -19,11 +19,10 @@ const strategyInfo: Record<Strategy, { label: string; description: string }> = {
     description: "Once a deadlock is detected, the OS can recover by terminating one or more processes or by preempting resources from a process to break the cycle.",
   },
 };
-
-// ─── Shared resource names ────────────────────────────────────────────────────
+// resources
 const RESOURCES = ["A", "B", "C"];
 
-// ─── Detection ────────────────────────────────────────────────────────────────
+// detection
 interface DetectionProcess {
   id: string;
   allocation: number[];
@@ -57,7 +56,7 @@ function detectDeadlock(processes: DetectionProcess[], available: number[]) {
   return { deadlocked, safeSeq, isDeadlock: deadlocked.length > 0 };
 }
 
-// ─── Prevention (Banker's) ────────────────────────────────────────────────────
+// prevention (Banker's)
 interface BankersProcess {
   id: string;
   allocation: number[];
@@ -119,7 +118,7 @@ function ResourceInput({ values, onChange }: { values: number[]; onChange: (idx:
 export default function Deadlock() {
   const [selected, setSelected] = useState<Strategy>("Detection");
 
-  // ── Detection state ──
+  // detection state
   const [detProcs, setDetProcs] = useState<DetectionProcess[]>([
     { id: "P0", allocation: [0, 1, 0], request: [0, 0, 0] },
     { id: "P1", allocation: [2, 0, 0], request: [2, 0, 2] },
@@ -129,7 +128,7 @@ export default function Deadlock() {
   ]);
   const [detAvail, setDetAvail] = useState<number[]>([0, 0, 0]);
 
-  // ── Prevention state ──
+  // prevention state
   const [bankProcs, setBankProcs] = useState<BankersProcess[]>([
     { id: "P0", allocation: [0, 1, 0], max: [7, 5, 3] },
     { id: "P1", allocation: [2, 0, 0], max: [3, 2, 2] },
@@ -139,15 +138,15 @@ export default function Deadlock() {
   ]);
   const [bankAvail, setBankAvail] = useState<number[]>([3, 3, 2]);
 
-  // ── Recovery state ──
+  // recovery state
   const [recoveryAction, setRecoveryAction] = useState<Record<string, "terminate" | "preempt" | null>>({});
 
-  // Compute results
+  // compute results
   const detResult = detectDeadlock(detProcs, detAvail);
   const bankResult = runBankers(bankProcs, bankAvail);
   const bankNeed = bankResult.need;
 
-  // ── Detection handlers ──
+  // detection handlers
   function updateDetProc(i: number, field: "allocation" | "request", j: number, val: string) {
     setDetProcs((prev) => prev.map((p, idx) => {
       if (idx !== i) return p;
@@ -164,7 +163,7 @@ export default function Deadlock() {
     setDetProcs((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  // ── Banker handlers ──
+  // banker handlers
   function updateBankProc(i: number, field: "allocation" | "max", j: number, val: string) {
     setBankProcs((prev) => prev.map((p, idx) => {
       if (idx !== i) return p;
@@ -249,7 +248,7 @@ export default function Deadlock() {
             <p className="text-sm text-slate-500 dark:text-slate-400">{strategyInfo[selected].description}</p>
           </div>
 
-          {/* ── DETECTION ── */}
+          {/* detection */}
           {selected === "Detection" && (
             <>
               {/* Available */}
@@ -399,7 +398,7 @@ export default function Deadlock() {
             </>
           )}
 
-          {/* ── PREVENTION (BANKER'S) ── */}
+          {/* prevention (Banker's) */}
           {selected === "Prevention" && (
             <>
               {/* Available */}
@@ -513,7 +512,7 @@ export default function Deadlock() {
             </>
           )}
 
-          {/* ── RECOVERY ── */}
+          {/* recovery */}
           {selected === "Recovery" && (
             <>
               <div className="rounded-2xl border border-slate-200/70 dark:border-white/8
@@ -535,7 +534,7 @@ export default function Deadlock() {
                   ))}
                 </div>
 
-                {/* Re-run detection to show deadlocked processes */}
+                {/* re-run detection */}
                 <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                   Apply Recovery (uses Detection data)
                 </p>
