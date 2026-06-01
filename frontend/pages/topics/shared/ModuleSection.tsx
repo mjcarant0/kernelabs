@@ -65,7 +65,7 @@ export default function ModuleSection({
 
   // progress percentage
   const progressPercentage = useMemo(() => {
-    const totalMainTopics = 8;
+    const totalMainTopics = mainTopics.length || 1;
     return Math.round((completedTopics.size / totalMainTopics) * 100);
   }, [completedTopics]);
 
@@ -152,7 +152,7 @@ export default function ModuleSection({
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-(--text-secondary)">Topics completed</span>
                   <span className="font-semibold text-cyan-600 dark:text-cyan-400">
-                    {completedTopics.size} / 8
+                    {completedTopics.size} / {mainTopics.length}
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-slate-200 dark:bg-white/5 overflow-hidden">
