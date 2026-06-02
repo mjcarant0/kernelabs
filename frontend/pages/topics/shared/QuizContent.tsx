@@ -96,9 +96,9 @@ export default function QuizContent({ questions, onComplete }: QuizContentProps)
               : "bg-orange-100 dark:bg-orange-500/10 border-orange-300 dark:border-orange-400/30 text-orange-700 dark:text-orange-300"
           }`}>
             {quizResult.passed ? (
-              <p className="font-medium">Congratulations! You've passed this topic. You can retake the quiz anytime to improve your score.</p>
+              <p className="font-medium">Congratulations! You&rsquo;ve passed this topic. You can retake the quiz anytime to improve your score.</p>
             ) : (
-              <p className="font-medium">You need 70% to pass. Don't worry, practice makes perfect — retake the quiz anytime.</p>
+              <p className="font-medium">You need 70% to pass. Don&rsquo;t worry, practice makes perfect — retake the quiz anytime.</p>
             )}
           </div>
 

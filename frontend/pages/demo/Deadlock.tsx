@@ -209,7 +209,7 @@ export default function Deadlock() {
           </span>
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-mono text-sm max-w-xl mx-auto">
-          <span className="text-cyan-500">&gt;</span> Simulate deadlock detection, prevention using Banker's Algorithm, and recovery strategies
+          <span className="text-cyan-500">&gt;</span> Simulate deadlock detection, prevention using Banker&rsquo;s Algorithm, and recovery strategies
         </p>
       </div>
 
@@ -417,7 +417,7 @@ export default function Deadlock() {
                 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
                 <div className="flex items-center justify-between mb-4">
                   <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                    Banker's Algorithm Table
+                    Banker&rsquo;s Algorithm Table
                   </p>
                   <button onClick={addBankProc}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono

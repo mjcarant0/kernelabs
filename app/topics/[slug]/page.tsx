@@ -44,7 +44,7 @@ export default async function TopicRoute({ params }: TopicRouteProps) {
               Topic Route
             </p>
             <h1 className="text-3xl font-bold text-(--text-primary) mb-4">Topic Not Found</h1>
-            <p className="text-(--text-secondary)">The topic "{slug}" does not exist yet.</p>
+            <p className="text-(--text-secondary)">The topic &quot;{slug}&quot; does not exist yet.</p>
           </div>
         </div>
       );

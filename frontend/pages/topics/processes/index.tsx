@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import ModuleSection from "../shared/ModuleSection";
 import QuizSection from "../shared/QuizSection";
 import QuizContent from "../shared/QuizContent";
@@ -39,12 +40,12 @@ export default function ProcessesTopic() {
 
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <a
+              <Link
                 href="/topics"
                 className="px-4 py-2 text-sm text-(--text-primary) border border-white/10 dark:border-white/5 bg-white/5 dark:bg-black/20 rounded-lg hover:bg-white/10 dark:hover:bg-white/20 transition-all"
               >
                 Back to Topics
-              </a>
+              </Link>
             </div>
           </div>
         </div>
