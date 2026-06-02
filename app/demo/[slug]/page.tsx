@@ -1,6 +1,6 @@
 import DemoIndex from "../../../frontend/pages/demo/index";
 
-export default async function DemoSlugPage({ params }: PageProps<"/demo/[slug]">) {
+export default async function DemoSlugPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   return <DemoIndex slug={slug} />;
 }
