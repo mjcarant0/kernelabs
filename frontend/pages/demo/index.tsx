@@ -5,9 +5,10 @@ import MemoryManagement from "./MemoryManagement";
 import VirtualMemory from "./VirtualMemory";
 import Deadlock from "./Deadlock";
 import Link from "next/link";
+import { ComponentType } from "react";
 
 // Demo router: map slug to page
-const pages: Record<string, React.ComponentType> = {
+const pages: Record<string, ComponentType> = {
   "cpu-scheduling": CpuScheduling,
   "memory-management": MemoryManagement,
   "virtual-memory": VirtualMemory,

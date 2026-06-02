@@ -139,7 +139,7 @@ export default function TopicsPage() {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-(--text-muted)">Topics</p>
-                  <p className="mt-2 text-2xl font-bold text-cyan-600 dark:text-cyan-300">1</p>
+                  <p className="mt-2 text-2xl font-bold text-cyan-600 dark:text-cyan-300">{topics.length}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-(--text-muted)">Mode</p>
@@ -159,7 +159,7 @@ export default function TopicsPage() {
             <div>
               <h2 className="text-xl font-semibold text-(--text-primary)">Available Topic</h2>
               <p className="text-sm text-(--text-secondary) mt-1">
-                The introduction module is the only active topic in this course.
+                All {topics.length} topics are available for study.
               </p>
             </div>
             <div className="hidden sm:block text-xs font-mono uppercase tracking-[0.25em] text-(--text-muted)">

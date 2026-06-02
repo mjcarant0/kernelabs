@@ -62,7 +62,6 @@ export default function TopicsSection() {
       // compute slide height
       const computedHeight = Math.max(120, Math.floor(computedSlide * 0.5));
       setSlideHeight(computedHeight);
-      setSlideHeight(computedHeight);
 
       // start index at first real slide
       setIndex(vc);

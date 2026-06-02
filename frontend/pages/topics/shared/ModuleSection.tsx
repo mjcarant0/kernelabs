@@ -67,7 +67,7 @@ export default function ModuleSection({
   const progressPercentage = useMemo(() => {
     const totalMainTopics = mainTopics.length || 1;
     return Math.round((completedTopics.size / totalMainTopics) * 100);
-  }, [completedTopics]);
+  }, [completedTopics, mainTopics]);
 
   const handleLessonClick = (sectionId: string) => {
     // mark previous lesson completed

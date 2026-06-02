@@ -1,8 +1,8 @@
 // Quiz content and scoring
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { QuizQuestion, QuizResult } from "./types";
-import { calculateScore, isPassed, getResultMessage, getResultColor } from "./utils";
+import { calculateScore, isPassed, getResultMessage } from "./utils";
 
 interface QuizContentProps {
   questions: QuizQuestion[];
@@ -58,6 +58,7 @@ export default function QuizContent({ questions, onComplete }: QuizContentProps)
 
     setQuizResult(result);
     setShowResult(true);
+    onComplete(result);
   };
 
   const handleRetakeQuiz = () => {

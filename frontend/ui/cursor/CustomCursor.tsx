@@ -31,9 +31,7 @@ export default function CustomCursor() {
     const onMove = (e: PointerEvent) => {
       mouseX.set(e.clientX);
       mouseY.set(e.clientY);
-      if (!visible) {
-        setVisible(true);
-      }
+      setVisible(true);
     };
 
     const onDown = () => {
@@ -79,7 +77,7 @@ export default function CustomCursor() {
       document.removeEventListener("pointerover", onOver);
       document.removeEventListener("pointerout", onOut);
     };
-  }, [mouseX, mouseY, visible]);
+  }, [mouseX, mouseY]);
 
   if (!enabled) return null;
 

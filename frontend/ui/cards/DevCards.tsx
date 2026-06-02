@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 
 type DevCardProps = {
   image?: string;
@@ -94,9 +95,11 @@ export default function DevCard({
             bg-slate-100 dark:bg-slate-800
             flex items-center justify-center">
             {image && !image.includes("placeholder") ? (
-              <img
+              <Image
                 src={image}
                 alt={name}
+                width={80}
+                height={80}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             ) : (
