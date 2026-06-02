@@ -1,0 +1,413 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+
+type Algorithm = "FCFS" | "SJF" | "Priority" | "RoundRobin";
+
+interface Process {
+  id: string;
+  arrivalTime: number | string;
+  burstTime: number | string;
+  priority?: number | string;
+}
+
+interface GanttBlock {
+  pid: string;
+  start: number;
+  end: number;
+}
+
+const algorithmInfo: Record<Algorithm, { label: string; description: string; columns: string[] }> = {
+  FCFS: {
+    label: "First Come First Serve",
+    description: "Processes are executed in the order they arrive. Simple but may cause long waiting times.",
+    columns: ["Process ID", "Arrival Time", "Burst Time"],
+  },
+  SJF: {
+    label: "Shortest Job First",
+    description: "The process with the shortest burst time is executed next. Minimizes average waiting time.",
+    columns: ["Process ID", "Arrival Time", "Burst Time"],
+  },
+  Priority: {
+    label: "Priority Scheduling",
+    description: "Each process is assigned a priority. Lower number = higher priority. May cause starvation.",
+    columns: ["Process ID", "Arrival Time", "Burst Time", "Priority"],
+  },
+  RoundRobin: {
+    label: "Round Robin",
+    description: "Each process gets a fixed time slice (quantum). Fair but has higher context-switching overhead.",
+    columns: ["Process ID", "Arrival Time", "Burst Time"],
+  },
+};
+
+function defaultRow(algo: Algorithm, index: number): Process {
+  return {
+    id: `P${index + 1}`,
+    arrivalTime: 0,
+    burstTime: 0,
+    priority: algo === "Priority" ? 1 : undefined,
+  };
+}
+
+function computeGantt(algo: Algorithm, processes: Process[], globalQuantum: number): GanttBlock[] {
+  const valid = processes.filter(
+    (p) => p.id && p.arrivalTime !== "" && p.burstTime !== "" &&
+      Number(p.burstTime) > 0
+  );
+  if (valid.length === 0) return [];
+
+  const procs = valid.map((p) => ({
+    pid: p.id,
+    arrival: Number(p.arrivalTime),
+    burst: Number(p.burstTime),
+    remaining: Number(p.burstTime),
+    priority: Number(p.priority ?? 0),
+  }));
+
+  const gantt: GanttBlock[] = [];
+
+  if (algo === "FCFS") {
+    const sorted = [...procs].sort((a, b) => a.arrival - b.arrival);
+    let time = 0;
+    for (const p of sorted) {
+      const start = Math.max(time, p.arrival);
+      gantt.push({ pid: p.pid, start, end: start + p.burst });
+      time = start + p.burst;
+    }
+  } else if (algo === "SJF") {
+    const sorted = [...procs].sort((a, b) => a.arrival - b.arrival);
+    let time = 0;
+    const done = new Set<string>();
+    while (done.size < sorted.length) {
+      const available = sorted.filter((p) => p.arrival <= time && !done.has(p.pid));
+      if (available.length === 0) { time++; continue; }
+      const next = available.sort((a, b) => a.burst - b.burst)[0];
+      gantt.push({ pid: next.pid, start: time, end: time + next.burst });
+      time += next.burst;
+      done.add(next.pid);
+    }
+  } else if (algo === "Priority") {
+    const sorted = [...procs].sort((a, b) => a.arrival - b.arrival);
+    let time = 0;
+    const done = new Set<string>();
+    while (done.size < sorted.length) {
+      const available = sorted.filter((p) => p.arrival <= time && !done.has(p.pid));
+      if (available.length === 0) { time++; continue; }
+      const next = available.sort((a, b) => a.priority - b.priority)[0];
+      gantt.push({ pid: next.pid, start: time, end: time + next.burst });
+      time += next.burst;
+      done.add(next.pid);
+    }
+  } else if (algo === "RoundRobin") {
+    const q = globalQuantum;
+    const queue = [...procs].sort((a, b) => a.arrival - b.arrival).map((p) => ({ ...p }));
+    let time = 0;
+    const readyQueue: typeof queue = [];
+    const arrived = new Set<string>();
+    let idx = 0;
+    while (readyQueue.length > 0 || idx < queue.length) {
+      while (idx < queue.length && queue[idx].arrival <= time) {
+        readyQueue.push(queue[idx]);
+        arrived.add(queue[idx].pid);
+        idx++;
+      }
+      if (readyQueue.length === 0) { time = queue[idx]?.arrival ?? time + 1; continue; }
+      const curr = readyQueue.shift()!;
+      const run = Math.min(q, curr.remaining);
+      gantt.push({ pid: curr.pid, start: time, end: time + run });
+      time += run;
+      curr.remaining -= run;
+      while (idx < queue.length && queue[idx].arrival <= time) {
+        readyQueue.push(queue[idx]);
+        idx++;
+      }
+      if (curr.remaining > 0) readyQueue.push(curr);
+    }
+  }
+
+  return gantt;
+}
+
+const COLORS = [
+  "bg-cyan-500", "bg-blue-500", "bg-purple-500", "bg-emerald-500",
+  "bg-rose-500", "bg-amber-500", "bg-indigo-500", "bg-teal-500",
+];
+const TEXT_COLORS = [
+  "text-cyan-500", "text-blue-500", "text-purple-500", "text-emerald-500",
+  "text-rose-500", "text-amber-500", "text-indigo-500", "text-teal-500",
+];
+
+export default function CpuScheduling() {
+  const [selected, setSelected] = useState<Algorithm>("FCFS");
+  const [rows, setRows] = useState<Process[]>([defaultRow("FCFS", 0), defaultRow("FCFS", 1), defaultRow("FCFS", 2)]);
+  const [globalQuantum, setGlobalQuantum] = useState<string>("2");
+
+  const info = algorithmInfo[selected];
+  const gantt = computeGantt(selected, rows, Number(globalQuantum));
+  const totalTime = gantt.length > 0 ? gantt[gantt.length - 1].end : 0;
+  const pidList = [...new Set(gantt.map((b) => b.pid))];
+
+  function handleAlgoChange(algo: Algorithm) {
+    setSelected(algo);
+    setRows([defaultRow(algo, 0), defaultRow(algo, 1), defaultRow(algo, 2)]);
+  }
+
+  function addRow() {
+    setRows((prev) => [...prev, defaultRow(selected, prev.length)]);
+  }
+
+  function removeRow(i: number) {
+    if (rows.length <= 1) return;
+    setRows((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function updateRow(i: number, field: keyof Process, value: string) {
+    setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#eef4f8] via-[#f0f6fa] to-[#eef4f8]
+      dark:from-[#030d1f] dark:via-[#020b18] dark:to-[#030d1f]">
+
+      {/* Top bar */}
+      <div className="sticky top-0 z-50 border-b border-slate-200/60 dark:border-white/8
+        bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl px-6 py-3 flex items-center justify-between">
+        <Link href="/#demo" className="inline-flex items-center gap-2 text-sm font-mono
+          text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Demos
+        </Link>
+        <div className="flex items-center gap-2 font-mono text-xs text-cyan-600 dark:text-cyan-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+          SIMULATOR · LIVE
+        </div>
+      </div>
+
+      {/* Header */}
+      <div className="mx-auto max-w-6xl px-6 pt-12 pb-8 text-center">
+        <div className="text-5xl mb-4">⚙️</div>
+        <h1 className="text-4xl md:text-5xl font-bold mb-3">
+          <span className="bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-300 dark:to-blue-300 bg-clip-text text-transparent">
+            CPU Scheduling
+          </span>
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 font-mono text-sm max-w-xl mx-auto">
+          <span className="text-cyan-500">&gt;</span> Select an algorithm, fill in the process table, and visualize the Gantt chart
+        </p>
+      </div>
+
+      {/* Main layout */}
+      <div className="mx-auto max-w-6xl px-6 pb-16 flex flex-col md:flex-row gap-6">
+
+        {/* Left panel — algorithm selector */}
+        <div className="md:w-64 shrink-0">
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8
+            bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-4 sticky top-20">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-widest">
+              Algorithms
+            </p>
+            <div className="flex flex-col gap-1">
+              {(Object.keys(algorithmInfo) as Algorithm[]).map((algo) => (
+                <button
+                  key={algo}
+                  onClick={() => handleAlgoChange(algo)}
+                  className={`text-left px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                    ${selected === algo
+                      ? "bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-400/40 dark:border-cyan-500/30"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent"
+                    }`}
+                >
+                  <span className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-0.5">
+                    {algo === "RoundRobin" ? "RR" : algo}
+                  </span>
+                  {algorithmInfo[algo].label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right panel */}
+        <div className="flex-1 flex flex-col gap-6">
+
+          {/* Algorithm description */}
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8
+            bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
+            <h2 className="font-bold text-slate-900 dark:text-white text-lg mb-1">{info.label}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{info.description}</p>
+            {selected === "RoundRobin" && (
+              <div className="mt-4 flex items-center gap-3">
+                <label className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  Time Quantum
+                </label>
+                <input
+                  type="number" min={1}
+                  value={globalQuantum}
+                  onChange={(e) => setGlobalQuantum(e.target.value)}
+                  className="w-20 bg-transparent border border-cyan-400/40 dark:border-cyan-500/30
+                    rounded-lg px-3 py-1.5 text-slate-900 dark:text-white text-sm
+                    focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+                />
+                <span className="text-xs text-slate-400 dark:text-slate-500">ms — applied to all processes</span>
+              </div>
+            )}
+          </div>
+
+          {/* Process table */}
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8
+            bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                Process Table
+              </p>
+              <button onClick={addRow}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono
+                  bg-cyan-500/10 dark:bg-cyan-500/15 text-cyan-600 dark:text-cyan-400
+                  border border-cyan-400/30 dark:border-cyan-500/25
+                  hover:bg-cyan-500/20 transition-colors">
+                + Add Row
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/8">
+                    {info.columns.map((col) => (
+                      <th key={col} className="text-left py-2 px-3 font-mono text-xs
+                        text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                        {col}
+                      </th>
+                    ))}
+                    <th className="w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                      {/* Process ID */}
+                      <td className="py-2 px-3">
+                        <input
+                          value={row.id}
+                          onChange={(e) => updateRow(i, "id", e.target.value)}
+                          className="w-16 bg-transparent border border-slate-200 dark:border-white/10
+                            rounded-lg px-2 py-1 text-slate-900 dark:text-white text-xs
+                            focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500"
+                        />
+                      </td>
+                      {/* Arrival Time */}
+                      <td className="py-2 px-3">
+                        <input
+                          type="number" min={0}
+                          value={row.arrivalTime}
+                          onChange={(e) => updateRow(i, "arrivalTime", e.target.value)}
+                          className="w-20 bg-transparent border border-slate-200 dark:border-white/10
+                            rounded-lg px-2 py-1 text-slate-900 dark:text-white text-xs
+                            focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500"
+                        />
+                      </td>
+                      {/* Burst Time */}
+                      <td className="py-2 px-3">
+                        <input
+                          type="number" min={1}
+                          value={row.burstTime}
+                          onChange={(e) => updateRow(i, "burstTime", e.target.value)}
+                          className="w-20 bg-transparent border border-slate-200 dark:border-white/10
+                            rounded-lg px-2 py-1 text-slate-900 dark:text-white text-xs
+                            focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500"
+                        />
+                      </td>
+                      {/* Priority */}
+                      {selected === "Priority" && (
+                        <td className="py-2 px-3">
+                          <input
+                            type="number" min={1}
+                            value={row.priority ?? ""}
+                            onChange={(e) => updateRow(i, "priority", e.target.value)}
+                            className="w-20 bg-transparent border border-slate-200 dark:border-white/10
+                              rounded-lg px-2 py-1 text-slate-900 dark:text-white text-xs
+                              focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500"
+                          />
+                        </td>
+                      )}
+                      {/* Delete */}
+                      <td className="py-2 px-1">
+                        <button onClick={() => removeRow(i)}
+                          className="text-slate-300 dark:text-slate-600 hover:text-rose-400 dark:hover:text-rose-500 transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Gantt Chart */}
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8
+            bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+              Gantt Chart
+            </p>
+
+            {gantt.length === 0 ? (
+              <div className="flex items-center justify-center h-20 text-slate-400 dark:text-slate-600 text-sm font-mono">
+                <span className="text-cyan-500 mr-2">&gt;</span> Fill in the table to generate the chart
+              </div>
+            ) : (
+              <>
+                {/* Blocks */}
+                <div className="flex overflow-x-auto pb-2">
+                  <div className="flex min-w-max">
+                    {gantt.map((block, i) => {
+                      const pidIdx = pidList.indexOf(block.pid);
+                      const width = Math.max((block.end - block.start) * 40, 40);
+                      return (
+                        <div key={i} className="flex flex-col items-center">
+                          <div
+                            style={{ width }}
+                            className={`${COLORS[pidIdx % COLORS.length]} h-10 flex items-center justify-center
+                              text-white text-xs font-bold border-r border-white/20 last:border-0 shrink-0`}
+                          >
+                            {block.pid}
+                          </div>
+                          <span className="text-xs font-mono text-slate-400 dark:text-slate-500 mt-1">
+                            {block.start}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {/* End time */}
+                    <div className="flex flex-col items-center justify-end">
+                      <div className="h-10" />
+                      <span className="text-xs font-mono text-slate-400 dark:text-slate-500 mt-1">
+                        {totalTime}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-white/5">
+                  {pidList.map((pid, i) => (
+                    <div key={pid} className="flex items-center gap-1.5">
+                      <div className={`w-3 h-3 rounded-sm ${COLORS[i % COLORS.length]}`} />
+                      <span className={`text-xs font-mono ${TEXT_COLORS[i % TEXT_COLORS.length]}`}>{pid}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
