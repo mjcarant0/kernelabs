@@ -1,0 +1,46 @@
+name: Test Branch CI
+
+on:
+  push:
+    branches:
+      - test
+  pull_request:
+    branches:
+      - test
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript validation
+        run: npm run type-check
+
+      - name: Type Check Passed
+        run: echo "Type Check Passed"
+
+      - name: ESLint validation
+        run: npm run lint
+
+      - name: Lint Passed
+        run: echo "Lint Passed"
+
+      - name: Production build validation
+        run: npm run build
+
+      - name: Build Passed
+        run: echo "Build Passed"
