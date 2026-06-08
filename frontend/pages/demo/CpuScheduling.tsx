@@ -128,6 +128,36 @@ function computeGantt(algo: Algorithm, processes: Process[], globalQuantum: numb
   return gantt;
 }
 
+function computeMetrics(processes: Process[], gantt: GanttBlock[]) {
+  const valid = processes.filter(
+    (p) => p.id && p.arrivalTime !== "" && p.burstTime !== "" && Number (p.burstTime) > 0
+  ) ;
+  if (valid.length === 0 || gantt.length === 0) return [];
+
+  return valid.map ((p) => {
+    const blocks = gantt.filter((b) => b.pid === p.id);
+    if (blocks.length === 0) return null;
+
+    const arrival = Number(p.arrivalTime);
+    const burst = Number(p.burstTime);
+    const completionTime = Math.max(...blocks.map((b) => b.end));
+    const firstStart = Math.min(...blocks.map((b) => b.start));
+    const turnaroundTime = completionTime - arrival;
+    const waitingTime = turnaroundTime - burst;
+    const responseTime = firstStart - arrival;
+
+    return {
+      pid: p.id,
+      arrival,
+      burst,
+      completionTime,
+      turnaroundTime,
+      waitingTime,
+      responseTime,
+    };
+  }).filter(Boolean)
+}
+
 function chunkGantt(gantt: GanttBlock[], maxPerRow: number): GanttBlock[][] {
   const rows: GanttBlock[][] = [];
   for (let i = 0; i < gantt.length; i += maxPerRow) {
@@ -136,13 +166,12 @@ function chunkGantt(gantt: GanttBlock[], maxPerRow: number): GanttBlock[][] {
   return rows;
 }
 
-const COLORS = [
-  "bg-cyan-500", "bg-blue-500", "bg-purple-500", "bg-emerald-500",
-  "bg-rose-500", "bg-amber-500", "bg-indigo-500", "bg-teal-500",
+const COLORS_LIGHT = [
+  "#d5f3f9", "#a1d9e4",
 ];
-const TEXT_COLORS = [
-  "text-cyan-500", "text-blue-500", "text-purple-500", "text-emerald-500",
-  "text-rose-500", "text-amber-500", "text-indigo-500", "text-teal-500",
+
+const COLORS_DARK = [
+  "#073349", "#1c526c",
 ];
 
 const BLOCKS_PER_ROW = 10;
@@ -168,6 +197,8 @@ export default function CpuScheduling() {
     setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
+  const COLORS = isDark ? COLORS_DARK : COLORS_LIGHT;
+
   function toggleTheme() {
     const html = document.documentElement;
     if (html.classList.contains("dark")) {
@@ -183,6 +214,9 @@ export default function CpuScheduling() {
   const gantt = computeGantt(selected, rows, Number(globalQuantum) || 1);
   const pidList = [...new Set(gantt.map((b) => b.pid))];
   const ganttRows = chunkGantt(gantt, BLOCKS_PER_ROW);
+  const metrics = computeMetrics(rows, gantt);
+  const avgTAT = metrics.length ? metrics.reduce((s,m) => s + m!.turnaroundTime, 0) / metrics.length : 0;
+  const avgWT = metrics.length ? metrics.reduce((s, m) => s + m!.waitingTime, 0) / metrics.length : 0;
 
   function handleAlgoChange(algo: Algorithm) {
     setSelected(algo);
@@ -206,7 +240,7 @@ export default function CpuScheduling() {
 
   function focusNext(i: number, field: string) {
     const nextRow = i + 1;
-    if (nextRow >= rows.length) return; // don't add new row, just stop
+    if (nextRow >= rows.length) return;
     setTimeout(() => {
       const el = document.querySelector<HTMLInputElement>(
         `[data-row="${nextRow}"][data-field="${field}"]`
@@ -430,9 +464,9 @@ export default function CpuScheduling() {
                             return (
                               <div
                                 key={i}
-                                style={{ width: blockWidth(block.end - block.start) }}
-                                className={`${COLORS[pidIdx % COLORS.length]} h-10 flex items-center justify-center
-                                  text-white text-[11px] font-bold shrink-0
+                                style={{ width: blockWidth(block.end - block.start),backgroundColor: COLORS[pidIdx % COLORS.length], }}
+                                className={`h-10 flex items-center justify-center
+                                  ${isDark ? "text-[#c2cfdb]" : "text-[#495970]"} text-[11px] font-bold shrink-0
                                   border-r-2 border-white/30 last:border-r-0`}
                               >
                                 {block.pid}
@@ -461,19 +495,66 @@ export default function CpuScheduling() {
                   })}
                 </div>
 
-                {/* Legend */}
-                <div className="flex flex-wrap gap-3 mt-5 pt-4 border-t border-slate-100 dark:border-white/5">
-                  {pidList.map((pid: string, i: number) => (
-                    <div key={pid} className="flex items-center gap-1.5">
-                      <div className={`w-3 h-3 rounded-sm ${COLORS[i % COLORS.length]}`} />
-                      <span className={`text-xs font-mono ${TEXT_COLORS[i % TEXT_COLORS.length]}`}>{pid}</span>
+                {/* Metrics Table*/}
+                {metrics.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
+                    <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+                      Process Metrics
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-white/8">
+                          {["Process", "Arrival", "Burst", "Completion", "Turnaround", "Waiting", "Response"].map((h) => (
+                            <th key={h} className="text-left py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                              {h}
+                            </th>
+                          ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {metrics.map((m, i) => {
+                            const pidIdx = pidList.indexOf(m!.pid);
+                            const blockColor = COLORS[pidIdx % COLORS.length];
+                            return (
+                              <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                                <td className="py-2 px-3">
+                                  <span 
+                                    className="font-mono text-xs font-bold"
+                                    style={{ color: blockColor }}>
+                                    {m!.pid}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.arrival}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.burst}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.completionTime}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.turnaroundTime}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.waitingTime}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.responseTime}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-slate-200 dark:border-white/10">
+                            <td colSpan={4} className="py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 text-right">
+                              Averages →
+                            </td>
+                            <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">
+                              {avgTAT.toFixed(2)}
+                            </td>
+                            <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">
+                              {avgWT.toFixed(2)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </>
             )}
           </div>
-
         </div>
       </div>
     </div>

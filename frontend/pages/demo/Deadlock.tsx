@@ -120,23 +120,15 @@ export default function Deadlock() {
 
   // detection state
   const [detProcs, setDetProcs] = useState<DetectionProcess[]>([
-    { id: "P0", allocation: [0, 1, 0], request: [0, 0, 0] },
-    { id: "P1", allocation: [2, 0, 0], request: [2, 0, 2] },
-    { id: "P2", allocation: [3, 0, 3], request: [0, 0, 0] },
-    { id: "P3", allocation: [2, 1, 1], request: [1, 0, 0] },
-    { id: "P4", allocation: [0, 0, 2], request: [0, 0, 2] },
+    { id: "P0", allocation: [0, 0, 0], request: [0, 0, 0] },
   ]);
   const [detAvail, setDetAvail] = useState<number[]>([0, 0, 0]);
 
   // prevention state
   const [bankProcs, setBankProcs] = useState<BankersProcess[]>([
-    { id: "P0", allocation: [0, 1, 0], max: [7, 5, 3] },
-    { id: "P1", allocation: [2, 0, 0], max: [3, 2, 2] },
-    { id: "P2", allocation: [3, 0, 2], max: [9, 0, 2] },
-    { id: "P3", allocation: [2, 1, 1], max: [2, 2, 2] },
-    { id: "P4", allocation: [0, 0, 2], max: [4, 3, 3] },
+    { id: "P0", allocation: [0, 0, 0], max: [0, 0, 0] },
   ]);
-  const [bankAvail, setBankAvail] = useState<number[]>([3, 3, 2]);
+  const [bankAvail, setBankAvail] = useState<number[]>([0, 0, 0]);
 
   // recovery state
   const [recoveryAction, setRecoveryAction] = useState<Record<string, "terminate" | "preempt" | null>>({});
@@ -161,6 +153,7 @@ export default function Deadlock() {
   function removeDetProc(i: number) {
     if (detProcs.length <= 1) return;
     setDetProcs((prev) => prev.filter((_, idx) => idx !== i));
+    setRecoveryAction({});
   }
 
   // banker handlers
@@ -452,7 +445,7 @@ export default function Deadlock() {
                           </td>
                           <td className="py-2 px-3">
                             <div className="flex gap-2">
-                              {bankNeed[i]?.map((n, j) => (
+                              {(bankNeed[i] ?? [0, 0, 0]) .map((n, j) => (
                                 <span key={j} className="w-12 text-center text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 py-1">
                                   {n}
                                 </span>
@@ -540,7 +533,11 @@ export default function Deadlock() {
                 </p>
                 {detResult.deadlocked.length === 0 ? (
                   <div className="text-sm text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-2">
-                    <span>🟢</span> No deadlocked processes found. Go to Detection tab to configure.
+                    <span className="text-cyan-500">&gt;</span> No deadlocked processes found. Set up processes in the
+                    <button onClick={() => setSelected("Detection")}
+                      className="underline text-cyan-500 hover:text-cyan-400 transition-colors ml-1">
+                      Detection tab
+                    </button> first.
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">

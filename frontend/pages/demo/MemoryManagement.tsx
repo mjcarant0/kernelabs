@@ -39,6 +39,15 @@ interface AllocationResult {
   allocated: boolean;
 }
 
+interface ComputationStep {
+  processId: string;
+  processSize: number;
+  checkedBlocks: string[];
+  selectedBlock: string;
+  remainingBefore: number;
+  remainingAfter: number;
+}
+
 interface MemoryBlockResult {
   id: string;
   totalSize: number;
@@ -49,12 +58,12 @@ function allocate(
   algo: Algorithm,
   blocks: MemoryBlock[],
   processes: Process[]
-): { results: AllocationResult[]; memoryMap: MemoryBlockResult[] } {
+): { results: AllocationResult[]; memoryMap: MemoryBlockResult[]; computations: ComputationStep[]; } {
   const validBlocks = blocks.filter((b) => b.id && Number(b.size) > 0);
   const validProcs = processes.filter((p) => p.id && Number(p.size) > 0);
 
   if (validBlocks.length === 0 || validProcs.length === 0)
-    return { results: [], memoryMap: [] };
+    return { results: [], memoryMap: [], computations: [] };
 
   // block state
   const blockState = validBlocks.map((b) => ({
@@ -65,24 +74,41 @@ function allocate(
   }));
 
   const results: AllocationResult[] = [];
+  const computations: ComputationStep[] = [];
 
   for (const proc of validProcs) {
     const pSize = Number(proc.size);
     const available = blockState.filter((b) => b.remaining >= pSize);
+
+    const checkedBlocks = available.map(
+      (b) => `${b.id}(${b.remaining}KB)`
+    )
 
     let chosen: typeof blockState[0] | null = null;
 
     if (algo === "FirstFit") {
       chosen = available[0] ?? null;
     } else if (algo === "BestFit") {
-      chosen = available.sort((a, b) => a.remaining - b.remaining)[0] ?? null;
+      chosen = [...available].sort((a, b) => a.remaining - b.remaining)[0] ?? null;
     } else if (algo === "WorstFit") {
-      chosen = available.sort((a, b) => b.remaining - a.remaining)[0] ?? null;
+      chosen = [...available].sort((a, b) => b.remaining - a.remaining)[0] ?? null;
     }
 
     if (chosen) {
+      const before = chosen.remaining;
+
       chosen.allocations.push({ processId: proc.id, size: pSize });
       chosen.remaining -= pSize;
+
+      computations.push({
+        processId: proc.id,
+        processSize: pSize,
+        checkedBlocks,
+        selectedBlock: chosen.id,
+        remainingBefore: before,
+        remainingAfter: chosen.remaining,
+      });
+
       results.push({
         blockId: chosen.id,
         blockSize: chosen.total,
@@ -100,6 +126,15 @@ function allocate(
         remaining: 0,
         allocated: false,
       });
+
+      computations.push({
+        processId: proc.id,
+        processSize: pSize,
+        checkedBlocks,
+        selectedBlock: "None",
+        remainingBefore: 0,
+        remainingAfter: 0,
+      })
     }
   }
 
@@ -115,7 +150,7 @@ function allocate(
     return { id: b.id, totalSize: b.total, segments };
   });
 
-  return { results, memoryMap };
+  return { results, memoryMap, computations };
 }
 
 const COLORS = [
@@ -130,18 +165,13 @@ const TEXT_COLORS = [
 export default function MemoryManagement() {
   const [selected, setSelected] = useState<Algorithm>("FirstFit");
   const [memBlocks, setMemBlocks] = useState<MemoryBlock[]>([
-    { id: "B1", size: 100 },
-    { id: "B2", size: 50 },
-    { id: "B3", size: 200 },
-    { id: "B4", size: 75 },
+    { id: "B1", size: "0" },
   ]);
   const [processes, setProcesses] = useState<Process[]>([
-    { id: "P1", size: 45 },
-    { id: "P2", size: 80 },
-    { id: "P3", size: 60 },
+    { id: "P1", size: "0" },
   ]);
 
-  const { results, memoryMap } = allocate(selected, memBlocks, processes);
+  const { results, memoryMap, computations } = allocate(selected, memBlocks, processes);
   const allProcessIds = results.filter((r) => r.allocated).map((r) => r.processId);
 
   function updateBlock(i: number, field: keyof MemoryBlock, value: string) {
@@ -151,10 +181,10 @@ export default function MemoryManagement() {
     setProcesses((prev) => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p));
   }
   function addBlock() {
-    setMemBlocks((prev) => [...prev, { id: `B${prev.length + 1}`, size: 0 }]);
+    setMemBlocks((prev) => [...prev, { id: `B${prev.length + 1}`, size: "0" }]);
   }
   function addProcess() {
-    setProcesses((prev) => [...prev, { id: `P${prev.length + 1}`, size: 0 }]);
+    setProcesses((prev) => [...prev, { id: `P${prev.length + 1}`, size: "0" }]);
   }
   function removeBlock(i: number) {
     if (memBlocks.length <= 1) return;
