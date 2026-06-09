@@ -75,18 +75,10 @@ const COLORS = ["bg-cyan-500","bg-blue-500","bg-purple-500","bg-emerald-500","bg
 
 export default function VirtualMemory() {
   const [selected, setSelected] = useState<Algorithm>("Paging");
-  const [pageEntries, setPageEntries] = useState<PageEntry[]>([
-    { pageNumber: "0", frameNumber: "3", validBit: "1" },
-    { pageNumber: "1", frameNumber: "7", validBit: "1" },
-    { pageNumber: "2", frameNumber: "0", validBit: "0" },
-    { pageNumber: "3", frameNumber: "2", validBit: "1" },
-  ]);
-  const [segments, setSegments] = useState<Segment[]>([
-    { segmentId: "0", base: "1000", limit: "600", size: "600", label: "Code" },
-    { segmentId: "1", base: "2000", limit: "500", size: "500", label: "Stack" },
-    { segmentId: "2", base: "3000", limit: "300", size: "300", label: "Heap" },
-  ]);
-  const [refString, setRefString] = useState("7 0 1 2 0 3 0 4 2 3 0 3 2");
+  const [pageSize, setPageSize] = useState("");
+  const [pageEntries, setPageEntries] = useState<PageEntry[]>([]);
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [refString, setRefString] = useState("");
   const [numFrames, setNumFrames] = useState("3");
   const [replacementAlgo, setReplacementAlgo] = useState<ReplacementAlgo>("FIFO");
   const [isDark, setIsDark] = useState(true);
@@ -101,11 +93,11 @@ export default function VirtualMemory() {
   function updatePage(i: number, field: keyof PageEntry, value: string) {
     setPageEntries((prev: PageEntry[]) => prev.map((e: PageEntry, idx: number) => idx === i ? { ...e, [field]: value } : e));
   }
+  function addPage() { setPageEntries((prev: PageEntry[]) => [...prev, { pageNumber: String(prev.length), frameNumber: "0", validBit: "1" }]); }
+  function removePage(i: number) { if (pageEntries.length <= 1) return; setPageEntries((prev: PageEntry[]) => prev.filter((_: PageEntry, idx: number) => idx !== i)); }
   function updateSegment(i: number, field: keyof Segment, value: string) {
     setSegments((prev: Segment[]) => prev.map((s: Segment, idx: number) => idx === i ? { ...s, [field]: value } : s));
   }
-  function addPage() { setPageEntries((prev: PageEntry[]) => [...prev, { pageNumber: String(prev.length), frameNumber: "0", validBit: "1" }]); }
-  function removePage(i: number) { if (pageEntries.length <= 1) return; setPageEntries((prev: PageEntry[]) => prev.filter((_: PageEntry, idx: number) => idx !== i)); }
   function addSegment() { setSegments((prev: Segment[]) => [...prev, { segmentId: String(prev.length), base: "0", limit: "0", size: "0", label: "New" }]); }
   function removeSegment(i: number) { if (segments.length <= 1) return; setSegments((prev: Segment[]) => prev.filter((_: Segment, idx: number) => idx !== i)); }
 
@@ -125,6 +117,59 @@ export default function VirtualMemory() {
     : [];
   const pageFaults = steps.filter((s) => s.pageFault).length;
   const uniquePages = [...new Set(refs)];
+  const [logicalInput, setLogicalInput] = useState(0);
+  const pagingResult = translatePagingAddress(logicalInput);
+  const [segInput, setSegInput] = useState({ segmentId: 0, offset: 0 });
+  const segResult = translateSegmentAddress(segInput.segmentId, segInput.offset);
+
+  function translateSegmentAddress(segmentId: number, offset: number) {
+  const segment = segments.find(s => Number(s.segmentId) === segmentId);
+
+  if (!segment) {
+    return {valid: false, reason: "Invalid Segment"};
+  }
+
+  const base = Number(segment.base);
+  const limit = Number(segment.limit);
+
+  if (offset >= limit) {
+    return {valid: false, reason: "Segmentation Fault"};
+  }
+
+  return {
+    valid: true,
+    segmentId,
+    base,
+    offset,
+    physicalAddress: base + offset
+  };
+}
+
+
+  function translatePagingAddress(logicalAddress: number) {
+    const size = Number(pageSize);
+    const pageNumber = Math.floor(logicalAddress/size);
+    const offset = logicalAddress % size;
+    const entry = pageEntries.find(e => Number(e.pageNumber) === pageNumber);
+
+    if (!entry || entry.validBit === "0") {
+      return {
+        valid: false,
+        reason: "Page Fault"
+      };
+    }
+
+    const frame = Number(entry.frameNumber);
+    const physicalAddress = frame * size + offset;
+
+    return {
+      valid: true,
+      pageNumber,
+      frame,
+      offset,
+      physicalAddress
+    };
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eef4f8] via-[#f0f6fa] to-[#eef4f8] dark:from-[#030d1f] dark:via-[#020b18] dark:to-[#030d1f]">
@@ -258,6 +303,52 @@ export default function VirtualMemory() {
                   <span className="text-rose-500 dark:text-rose-400">✗ Invalid: {pageEntries.filter(e => e.validBit === "0").length}</span>
                 </div>
               </div>
+              <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
+                <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+                  Address Translation
+                </p>
+                <div className="flex items-end gap-4 flex-wrap">
+                  <div>
+                    <label className="font-mono text-xs text-slate-400 block mb-1">Page Size</label>
+                    <input
+                      type="number" min={1} value={pageSize}
+                      onChange={(e) => setPageSize(e.target.value)}
+                      className="w-28 bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-mono text-xs text-slate-400 block mb-1">Logical Address</label>
+                    <input
+                      type="number" min={0} value={logicalInput}
+                      onChange={(e) => setLogicalInput(Number(e.target.value))}
+                      className="w-28 bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 rounded-xl p-4 font-mono text-sm
+                  bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/8">
+                  {!pageSize || Number(pageSize) <= 0 ? (
+                    <p className="text-slate-400">Enter a page size to translate addresses.</p>
+                  ) : pagingResult.valid ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Valid Translation</span>
+                      <span className="text-slate-600 dark:text-slate-300">
+                        Logical <span className="text-cyan-500">{logicalInput}</span>
+                        {" → "} Page <span className="text-cyan-500">{pagingResult.pageNumber}</span>
+                        , Offset <span className="text-cyan-500">{pagingResult.offset}</span>
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-300">
+                        Frame <span className="text-blue-500">{pagingResult.frame}</span>
+                        {" → "} Physical Address{" "}
+                        <span className="text-blue-400 font-bold">{pagingResult.physicalAddress}</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-rose-500 font-bold">✗ {pagingResult.reason}</span>
+                  )}
+                </div>
+              </div>
+
             </>
           )}
 
@@ -314,6 +405,52 @@ export default function VirtualMemory() {
                   })}
                 </div>
               </div>
+              <div className="rounded-2xl border border-slate-200/70 dark:border-white/8
+                bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
+                <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+                  Address Translation
+                </p>
+                <div className="flex items-end gap-4 flex-wrap">
+                  <div>
+                    <label className="font-mono text-xs text-slate-400 block mb-1">Segment ID</label>
+                    <input
+                      type="number" min={0} value={segInput.segmentId}
+                      onChange={(e) => setSegInput(s => ({ ...s, segmentId: Number(e.target.value) }))}
+                      className="w-28 bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-mono text-xs text-slate-400 block mb-1">Offset</label>
+                    <input
+                      type="number" min={0} value={segInput.offset}
+                      onChange={(e) => setSegInput(s => ({ ...s, offset: Number(e.target.value) }))}
+                      className="w-28 bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 rounded-xl p-4 font-mono text-sm
+                  bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/8">
+                  {segments.length === 0 ? (
+                    <p className="text-slate-400">Add segments above to translate addresses.</p>
+                  ) : segResult.valid ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Valid Translation</span>
+                      <span className="text-slate-600 dark:text-slate-300">
+                        Segment <span className="text-cyan-500">{segResult.segmentId}</span>
+                        {" + "} Offset <span className="text-cyan-500">{segResult.offset}</span>
+                        {" → "} Base <span className="text-cyan-500">{segResult.base}</span>
+                        {" + "} Offset <span className="text-cyan-500">{segResult.offset}</span>
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-300">
+                        Physical Address{" "}
+                        <span className="text-blue-400 font-bold">{segResult.physicalAddress}</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-rose-500 font-bold">✗ {segResult.reason}</span>
+                  )}
+                </div>
+              </div>              
             </>
           )}
 

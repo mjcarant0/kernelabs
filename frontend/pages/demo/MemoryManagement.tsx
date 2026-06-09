@@ -26,15 +26,29 @@ interface AllocationResult {
   blockId: string; blockSize: number; processId: string;
   processSize: number; remaining: number; allocated: boolean;
 }
+
+interface ComputationStep {
+  processId: string;
+  processSize: number;
+  checkedBlocks: string[];
+  selectedBlock: string;
+  remainingBefore: number;
+  remainingAfter: number;
+}
+
 interface MemoryBlockResult {
   id: string; totalSize: number;
   segments: { type: "allocated" | "free"; size: number; processId?: string }[];
 }
 
-function allocate(algo: Algorithm, blocks: MemoryBlock[], processes: Process[]) {
+function allocate(
+  algo: Algorithm,
+  blocks: MemoryBlock[],
+  processes: Process[]
+): { results: AllocationResult[]; memoryMap: MemoryBlockResult[]; computations: ComputationStep[]; } {
   const validBlocks = blocks.filter((b) => b.id && Number(b.size) > 0);
   const validProcs = processes.filter((p) => p.id && Number(p.size) > 0);
-  if (validBlocks.length === 0 || validProcs.length === 0) return { results: [], memoryMap: [] };
+  if (validBlocks.length === 0 || validProcs.length === 0) return { results: [], memoryMap: [], computations: [] };
 
   const blockState = validBlocks.map((b) => ({
     id: b.id, total: Number(b.size), remaining: Number(b.size),
@@ -42,20 +56,67 @@ function allocate(algo: Algorithm, blocks: MemoryBlock[], processes: Process[]) 
   }));
 
   const results: AllocationResult[] = [];
+  const computations: ComputationStep[] = [];
+
   for (const proc of validProcs) {
     const pSize = Number(proc.size);
     const available = blockState.filter((b) => b.remaining >= pSize);
+
+    const checkedBlocks = available.map(
+      (b) => `${b.id}(${b.remaining}KB)`
+    )
+
     let chosen: typeof blockState[0] | null = null;
-    if (algo === "FirstFit") chosen = available[0] ?? null;
-    else if (algo === "BestFit") chosen = available.sort((a, b) => a.remaining - b.remaining)[0] ?? null;
-    else if (algo === "WorstFit") chosen = available.sort((a, b) => b.remaining - a.remaining)[0] ?? null;
+
+    if (algo === "FirstFit") {
+      chosen = available[0] ?? null;
+    } else if (algo === "BestFit") {
+      chosen = [...available].sort((a, b) => a.remaining - b.remaining)[0] ?? null;
+    } else if (algo === "WorstFit") {
+      chosen = [...available].sort((a, b) => b.remaining - a.remaining)[0] ?? null;
+    }
 
     if (chosen) {
+      const before = chosen.remaining;
+
       chosen.allocations.push({ processId: proc.id, size: pSize });
       chosen.remaining -= pSize;
-      results.push({ blockId: chosen.id, blockSize: chosen.total, processId: proc.id, processSize: pSize, remaining: chosen.remaining, allocated: true });
+
+      computations.push({
+        processId: proc.id,
+        processSize: pSize,
+        checkedBlocks,
+        selectedBlock: chosen.id,
+        remainingBefore: before,
+        remainingAfter: chosen.remaining,
+      });
+
+      results.push({
+        blockId: chosen.id,
+        blockSize: chosen.total,
+        processId: proc.id,
+        processSize: pSize,
+        remaining: chosen.remaining,
+        allocated: true,
+      });
     } else {
-      results.push({ blockId: "—", blockSize: 0, processId: proc.id, processSize: pSize, remaining: 0, allocated: false });
+      results.push({
+        blockId: "—",
+        blockSize: 0,
+        processId: proc.id,
+        processSize: pSize,
+        remaining: 0,
+        allocated: false,
+      });
+
+      computations.push({
+        processId: proc.id,
+        processSize: pSize,
+        checkedBlocks,
+        selectedBlock: "None",
+        remainingBefore: 0,
+        remainingAfter: 0,
+      })
     }
   }
 
@@ -65,7 +126,7 @@ function allocate(algo: Algorithm, blocks: MemoryBlock[], processes: Process[]) 
     return { id: b.id, totalSize: b.total, segments };
   });
 
-  return { results, memoryMap };
+  return { results, memoryMap, computations };
 }
 
 const COLORS = ["bg-cyan-500","bg-blue-500","bg-purple-500","bg-emerald-500","bg-rose-500","bg-amber-500","bg-indigo-500","bg-teal-500"];
@@ -73,12 +134,8 @@ const TEXT_COLORS = ["text-cyan-400","text-blue-400","text-purple-400","text-eme
 
 export default function MemoryManagement() {
   const [selected, setSelected] = useState<Algorithm>("FirstFit");
-  const [memBlocks, setMemBlocks] = useState<MemoryBlock[]>([
-    { id: "B1", size: 100 }, { id: "B2", size: 50 }, { id: "B3", size: 200 }, { id: "B4", size: 75 },
-  ]);
-  const [processes, setProcesses] = useState<Process[]>([
-    { id: "P1", size: 45 }, { id: "P2", size: 80 }, { id: "P3", size: 60 },
-  ]);
+  const [memBlocks, setMemBlocks] = useState<MemoryBlock[]>([]);
+  const [processes, setProcesses] = useState<Process[]>([]);
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => { setIsDark(document.documentElement.classList.contains("dark")); }, []);
@@ -89,7 +146,7 @@ export default function MemoryManagement() {
     else { html.classList.add("dark"); setIsDark(true); }
   }
 
-  const { results, memoryMap } = allocate(selected, memBlocks, processes);
+  const { results, memoryMap, computations } = allocate(selected, memBlocks, processes);
   const allProcessIds = results.filter((r) => r.allocated).map((r) => r.processId);
 
   function updateBlock(i: number, field: keyof MemoryBlock, value: string) {

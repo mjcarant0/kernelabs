@@ -74,22 +74,10 @@ function ResourceInput({ values, onChange, tableKey, row, field }: {
 
 export default function Deadlock() {
   const [selected, setSelected] = useState<Strategy>("Detection");
-  const [detProcs, setDetProcs] = useState<DetectionProcess[]>([
-    { id: "P0", allocation: [0,1,0], request: [0,0,0] },
-    { id: "P1", allocation: [2,0,0], request: [2,0,2] },
-    { id: "P2", allocation: [3,0,3], request: [0,0,0] },
-    { id: "P3", allocation: [2,1,1], request: [1,0,0] },
-    { id: "P4", allocation: [0,0,2], request: [0,0,2] },
-  ]);
+  const [detProcs, setDetProcs] = useState<DetectionProcess[]>([]);
   const [detAvail, setDetAvail] = useState<number[]>([0,0,0]);
-  const [bankProcs, setBankProcs] = useState<BankersProcess[]>([
-    { id: "P0", allocation: [0,1,0], max: [7,5,3] },
-    { id: "P1", allocation: [2,0,0], max: [3,2,2] },
-    { id: "P2", allocation: [3,0,2], max: [9,0,2] },
-    { id: "P3", allocation: [2,1,1], max: [2,2,2] },
-    { id: "P4", allocation: [0,0,2], max: [4,3,3] },
-  ]);
-  const [bankAvail, setBankAvail] = useState<number[]>([3,3,2]);
+  const [bankProcs, setBankProcs] = useState<BankersProcess[]>([]);
+  const [bankAvail, setBankAvail] = useState<number[]>([0,0,0]);
   const [recoveryAction, setRecoveryAction] = useState<Record<string, "terminate"|"preempt"|null>>({});
   const [isDark, setIsDark] = useState(true);
 
@@ -109,17 +97,17 @@ export default function Deadlock() {
       const arr = [...p[field]]; arr[j] = Number(val) || 0; return { ...p, [field]: arr };
     }));
   }
+  function addDetProc() { setDetProcs((prev: DetectionProcess[]) => [...prev, { id: `P${prev.length}`, allocation: [0,0,0], request: [0,0,0] }]); }
+  function removeDetProc(i: number) { if (detProcs.length <= 1) return; setDetProcs((prev: DetectionProcess[]) => prev.filter((_: DetectionProcess, idx: number) => idx !== i)); setRecoveryAction({}); }
+  function addBankProc() { setBankProcs((prev: BankersProcess[]) => [...prev, { id: `P${prev.length}`, allocation: [0,0,0], max: [0,0,0] }]); }
+  function removeBankProc(i: number) { if (bankProcs.length <= 1) return; setBankProcs((prev: BankersProcess[]) => prev.filter((_: BankersProcess, idx: number) => idx !== i)); }
+
   function updateBankProc(i: number, field: "allocation"|"max", j: number, val: string) {
     setBankProcs((prev: BankersProcess[]) => prev.map((p: BankersProcess, idx: number) => {
       if (idx !== i) return p;
       const arr = [...p[field]]; arr[j] = Number(val) || 0; return { ...p, [field]: arr };
     }));
   }
-  function addDetProc() { setDetProcs((prev: DetectionProcess[]) => [...prev, { id: `P${prev.length}`, allocation: [0,0,0], request: [0,0,0] }]); }
-  function removeDetProc(i: number) { if (detProcs.length <= 1) return; setDetProcs((prev: DetectionProcess[]) => prev.filter((_: DetectionProcess, idx: number) => idx !== i)); }
-  function addBankProc() { setBankProcs((prev: BankersProcess[]) => [...prev, { id: `P${prev.length}`, allocation: [0,0,0], max: [0,0,0] }]); }
-  function removeBankProc(i: number) { if (bankProcs.length <= 1) return; setBankProcs((prev: BankersProcess[]) => prev.filter((_: BankersProcess, idx: number) => idx !== i)); }
-
   function focusNextDet(i: number, field: string) {
     if (i + 1 >= detProcs.length) return;
     setTimeout(() => { const el = document.querySelector<HTMLInputElement>(`[data-table="det"][data-row="${i+1}"][data-field="${field}"]`); el?.focus(); el?.select(); }, 50);
