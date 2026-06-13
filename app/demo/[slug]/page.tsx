@@ -1,8 +1,11 @@
 import DemoIndex from "../../../frontend/pages/demo/index";
 
-export default async function DemoSlugPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  return <DemoIndex slug={slug} />;
+interface Props {
+  params: { slug: string };
+}
+
+export default function DemoSlugPage({ params }: Props) {
+  return <DemoIndex slug={params.slug} />;
 }
 
 export function generateStaticParams() {
@@ -10,6 +13,7 @@ export function generateStaticParams() {
     { slug: "cpu-scheduling" },
     { slug: "memory-management" },
     { slug: "virtual-memory" },
+    { slug: "disk-scheduling" },
     { slug: "deadlock" },
   ];
 }
