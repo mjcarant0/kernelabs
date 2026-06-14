@@ -8,7 +8,7 @@ import ModuleSection from "../shared/ModuleSection";
 import QuizSection from "../shared/QuizSection";
 import QuizContent from "../shared/QuizContent";
 import ThemeToggle from "../../home/ThemeToggle";
-import { introductionConfig, topicList } from "./topicMeta";
+import { introductionConfig } from "./topicMeta";
 import { quizQuestions } from "./quiz/quizData";
 import { module1Sections } from "./modules/Module1";
 
@@ -99,3 +99,4 @@ export default function IntroductionTopic() {
     </div>
   );
 }
+

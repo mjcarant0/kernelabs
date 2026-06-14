@@ -1,10 +1,11 @@
 "use client";
 
+import ExportButton from "@/backend/save_and_export/ExportButton";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 
 type Algorithm = "Paging" | "Segmentation" | "PageReplacement";
-type ReplacementAlgo = "FIFO" | "LRU" | "Optimal";
+type ReplacementAlgo = "FIFO" | "LRU" | "Optimal" | "LFU" | "MFU";
 
 const algorithmInfo: Record<Algorithm, { label: string; description: string }> = {
   Paging: { label: "Paging", description: "Divides logical memory into fixed-size pages and physical memory into frames. The page table maps each page to a frame in physical memory." },
@@ -71,6 +72,90 @@ function runOptimal(refs: number[], numFrames: number): ReplacementStep[] {
   return steps;
 }
 
+// LFU: Least Frequently Used - evicts the page with the smallest reference count.
+// Ties are broken by evicting the page that was loaded/used earliest (FIFO-style tie-break using lastUsed time).
+function runLFU(refs: number[], numFrames: number): ReplacementStep[] {
+  const frames: (number | null)[] = Array(numFrames).fill(null);
+  const freq: Record<number, number> = {};
+  const lastUsed: Record<number, number> = {};
+  const steps: ReplacementStep[] = [];
+
+  for (let i = 0; i < refs.length; i++) {
+    const page = refs[i];
+    freq[page] = (freq[page] || 0) + 1;
+    lastUsed[page] = i;
+
+    if (frames.includes(page)) {
+      steps.push({ page, frames: [...frames], pageFault: false, evicted: null });
+    } else {
+      let evicted: number | null = null;
+      if (!frames.includes(null)) {
+        let victimIdx = 0;
+        let minFreq = Infinity;
+        let oldestUse = Infinity;
+        for (let f = 0; f < frames.length; f++) {
+          const fp = frames[f]!;
+          const fCount = freq[fp] || 0;
+          const fLast = lastUsed[fp] ?? -1;
+          if (fCount < minFreq || (fCount === minFreq && fLast < oldestUse)) {
+            minFreq = fCount;
+            oldestUse = fLast;
+            victimIdx = f;
+          }
+        }
+        evicted = frames[victimIdx];
+        frames[victimIdx] = page;
+      } else {
+        frames[frames.indexOf(null)] = page;
+      }
+      steps.push({ page, frames: [...frames], pageFault: true, evicted });
+    }
+  }
+  return steps;
+}
+
+// MFU: Most Frequently Used - evicts the page with the largest reference count.
+// Ties are broken by evicting the page that was loaded/used earliest (FIFO-style tie-break using lastUsed time).
+function runMFU(refs: number[], numFrames: number): ReplacementStep[] {
+  const frames: (number | null)[] = Array(numFrames).fill(null);
+  const freq: Record<number, number> = {};
+  const lastUsed: Record<number, number> = {};
+  const steps: ReplacementStep[] = [];
+
+  for (let i = 0; i < refs.length; i++) {
+    const page = refs[i];
+    freq[page] = (freq[page] || 0) + 1;
+    lastUsed[page] = i;
+
+    if (frames.includes(page)) {
+      steps.push({ page, frames: [...frames], pageFault: false, evicted: null });
+    } else {
+      let evicted: number | null = null;
+      if (!frames.includes(null)) {
+        let victimIdx = 0;
+        let maxFreq = -Infinity;
+        let oldestUse = Infinity;
+        for (let f = 0; f < frames.length; f++) {
+          const fp = frames[f]!;
+          const fCount = freq[fp] || 0;
+          const fLast = lastUsed[fp] ?? -1;
+          if (fCount > maxFreq || (fCount === maxFreq && fLast < oldestUse)) {
+            maxFreq = fCount;
+            oldestUse = fLast;
+            victimIdx = f;
+          }
+        }
+        evicted = frames[victimIdx];
+        frames[victimIdx] = page;
+      } else {
+        frames[frames.indexOf(null)] = page;
+      }
+      steps.push({ page, frames: [...frames], pageFault: true, evicted });
+    }
+  }
+  return steps;
+}
+
 const COLORS = ["bg-cyan-500","bg-blue-500","bg-purple-500","bg-emerald-500","bg-rose-500","bg-amber-500","bg-indigo-500","bg-teal-500","bg-pink-500","bg-orange-500"];
 
 export default function VirtualMemory() {
@@ -113,7 +198,11 @@ export default function VirtualMemory() {
   const refs = refString.trim().split(/\s+/).map(Number).filter((n) => !isNaN(n));
   const frames = Math.max(1, parseInt(numFrames) || 1);
   const steps = selected === "PageReplacement"
-    ? replacementAlgo === "FIFO" ? runFIFO(refs, frames) : replacementAlgo === "LRU" ? runLRU(refs, frames) : runOptimal(refs, frames)
+    ? replacementAlgo === "FIFO" ? runFIFO(refs, frames)
+    : replacementAlgo === "LRU" ? runLRU(refs, frames)
+    : replacementAlgo === "Optimal" ? runOptimal(refs, frames)
+    : replacementAlgo === "LFU" ? runLFU(refs, frames)
+    : runMFU(refs, frames)
     : [];
   const pageFaults = steps.filter((s) => s.pageFault).length;
   const uniquePages = [...new Set(refs)];
@@ -180,6 +269,11 @@ export default function VirtualMemory() {
           Back to Demos
         </Link>
         <div className="flex items-center gap-3">
+          <ExportButton
+            targetId="virtual-memory-export-snapshot"
+            title="Virtual Memory Simulation"
+            subtitle={`Technique: ${algorithmInfo[selected].label}`}
+          />
           <button onClick={toggleTheme} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
             {isDark ? "☀️ Light" : "🌙 Dark"}
           </button>
@@ -460,7 +554,7 @@ export default function VirtualMemory() {
               <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
                 <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Configuration</p>
                 <div className="flex gap-2 mb-5 flex-wrap">
-                  {(["FIFO","LRU","Optimal"] as ReplacementAlgo[]).map((algo) => (
+                  {(["FIFO","LRU","Optimal","LFU","MFU"] as ReplacementAlgo[]).map((algo) => (
                     <button key={algo} onClick={() => setReplacementAlgo(algo)}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${replacementAlgo === algo ? "bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-400/40" : "text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5"}`}>
                       {algo}
@@ -477,6 +571,13 @@ export default function VirtualMemory() {
                     <input type="number" min={1} value={numFrames} onChange={(e) => setNumFrames(e.target.value)} className="w-full bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500" />
                   </div>
                 </div>
+                {(replacementAlgo === "LFU" || replacementAlgo === "MFU") && (
+                  <p className="mt-3 text-xs font-mono text-slate-400 dark:text-slate-500">
+                    {replacementAlgo === "LFU"
+                      ? "LFU evicts the page referenced the fewest times so far. Ties broken by least recently used."
+                      : "MFU evicts the page referenced the most times so far. Ties broken by least recently used."}
+                  </p>
+                )}
                 <div className="mt-4 flex gap-4 text-xs font-mono">
                   <span className="text-rose-500 dark:text-rose-400">Page Faults: {pageFaults}</span>
                   <span className="text-emerald-600 dark:text-emerald-400">Hits: {steps.length - pageFaults}</span>
@@ -529,6 +630,287 @@ export default function VirtualMemory() {
             </>
           )}
         </div>
+      </div>
+
+      {/* ── Hidden export snapshot ── */}
+      <div
+        id="virtual-memory-export-snapshot"
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: "-9999px",
+          width: "900px",
+          zIndex: -1,
+          pointerEvents: "none",
+          overflow: "visible",
+          padding: "32px",
+          paddingBottom: "80px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "40px",
+          background: isDark ? "#020b18" : "#f0f6fa",
+        }}
+      >
+        {/* Export title */}
+        <div className="text-center pb-4 border-b border-slate-200 dark:border-white/10">
+          <div className="text-4xl mb-4">🔄</div>
+          <h1 className="text-5xl font-bold text-slate-900 dark:text-white">Virtual Memory</h1>
+        </div>
+
+        {/* Description */}
+        <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+          <h2 className="font-bold text-slate-900 dark:text-white text-lg mb-2">{algorithmInfo[selected].label}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{algorithmInfo[selected].description}</p>
+        </div>
+
+        {/* PAGING snapshot */}
+        {selected === "Paging" && pageEntries.length > 0 && (
+          <>
+            <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+              <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Page Table</p>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/8">
+                    {["Page Number", "Frame Number", "Valid Bit"].map((col) => (
+                      <th key={col} className="text-left py-2 px-3 font-mono text-xs text-slate-400 uppercase tracking-wider">{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageEntries.map((entry, i) => (
+                    <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                      <td className="py-2 px-3 font-mono text-xs text-slate-900 dark:text-white">{entry.pageNumber}</td>
+                      <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{entry.frameNumber}</td>
+                      <td className="py-2 px-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold border ${entry.validBit === "1" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-400/30" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-400/30"}`}>
+                          {entry.validBit === "1" ? "1 (Valid)" : "0 (Invalid)"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-3 flex gap-4 text-xs font-mono">
+                <span className="text-emerald-600 dark:text-emerald-400">✓ Valid: {pageEntries.filter((e) => e.validBit === "1").length}</span>
+                <span className="text-rose-500 dark:text-rose-400">✗ Invalid: {pageEntries.filter((e) => e.validBit === "0").length}</span>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+              <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Page → Frame Mapping</p>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="font-mono text-xs text-cyan-600 dark:text-cyan-400 mb-2 text-center">Logical Memory (Pages)</p>
+                  <div className="flex flex-col gap-1">
+                    {pageEntries.map((entry, i) => (
+                      <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono border ${entry.validBit === "1" ? "bg-cyan-500/10 border-cyan-400/30 text-cyan-700 dark:text-cyan-300" : "bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/8 text-slate-400"}`}>
+                        <span>Page {entry.pageNumber}</span>
+                        <span>{entry.validBit === "1" ? `→ Frame ${entry.frameNumber}` : "Not in memory"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="font-mono text-xs text-blue-600 dark:text-blue-400 mb-2 text-center">Physical Memory (Frames)</p>
+                  <div className="flex flex-col gap-1">
+                    {pageEntries.filter((e) => e.validBit === "1").map((entry, i) => (
+                      <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono bg-blue-500/10 border border-blue-400/30 text-blue-700 dark:text-blue-300">
+                        <span>Frame {entry.frameNumber}</span><span>← Page {entry.pageNumber}</span>
+                      </div>
+                    ))}
+                    {pageEntries.filter((e) => e.validBit === "1").length === 0 && <p className="text-xs text-slate-400 text-center font-mono">No valid pages</p>}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex gap-4 text-xs font-mono">
+                <span className="text-emerald-600 dark:text-emerald-400">✓ Valid: {pageEntries.filter((e) => e.validBit === "1").length}</span>
+                <span className="text-rose-500 dark:text-rose-400">✗ Invalid: {pageEntries.filter((e) => e.validBit === "0").length}</span>
+              </div>
+            </div>
+            {pageSize && Number(pageSize) > 0 && (
+              <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+                <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Address Translation</p>
+                <p className="font-mono text-xs text-slate-600 dark:text-slate-300 mb-2">Page Size: <span className="text-cyan-500">{pageSize}</span> | Logical Address: <span className="text-cyan-500">{logicalInput}</span></p>
+                <div className="rounded-xl p-4 font-mono text-sm bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/8">
+                  {pagingResult.valid ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Valid Translation</span>
+                      <span className="text-slate-600 dark:text-slate-300">Logical <span className="text-cyan-500">{logicalInput}</span> → Page <span className="text-cyan-500">{pagingResult.pageNumber}</span>, Offset <span className="text-cyan-500">{pagingResult.offset}</span></span>
+                      <span className="text-slate-600 dark:text-slate-300">Frame <span className="text-blue-500">{pagingResult.frame}</span> → Physical Address <span className="text-blue-400 font-bold">{pagingResult.physicalAddress}</span></span>
+                    </div>
+                  ) : (
+                    <span className="text-rose-500 font-bold">✗ {pagingResult.reason}</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* SEGMENTATION snapshot */}
+        {selected === "Segmentation" && segments.length > 0 && (
+          <>
+            <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+              <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Segment Table</p>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/8">
+                    {["Segment ID", "Label", "Base Address", "Limit", "Size (bytes)"].map((col) => (
+                      <th key={col} className="text-left py-2 px-3 font-mono text-xs text-slate-400 uppercase tracking-wider whitespace-nowrap">{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {segments.map((seg, i) => (
+                    <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                      <td className="py-2 px-3 font-mono text-xs text-slate-900 dark:text-white">{seg.segmentId}</td>
+                      <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{seg.label}</td>
+                      <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{seg.base}</td>
+                      <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{seg.limit}</td>
+                      <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{seg.size}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+              <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Memory Map</p>
+              <div className="flex flex-col gap-2">
+                {segments.map((seg, i) => {
+                  const totalSize = segments.reduce((sum, s) => sum + (Number(s.size) || 0), 0);
+                  const width = totalSize > 0 ? Math.max((Number(seg.size) / totalSize) * 100, 5) : 100 / segments.length;
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="font-mono text-xs text-slate-400 w-16 shrink-0">{seg.label || `Seg ${seg.segmentId}`}</span>
+                      <div className="flex-1 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-white/8 bg-slate-100 dark:bg-white/5">
+                        <div
+                          style={{
+                            width: `${width}%`,
+                            backgroundColor: [
+                              "#06b6d4",
+                              "#3b82f6",
+                              "#a855f7",
+                              "#10b981",
+                              "#f43f5e",
+                              "#f59e0b",
+                              "#6366f1",
+                              "#14b8a6",
+                              "#ec4899",
+                              "#f97316",
+                            ][i % 10],
+                          }}
+                          className="h-full flex items-center justify-center text-white text-xs font-bold"
+                        >
+                          {Number(seg.size) > 0 ? `${seg.size}B` : ""}
+                        </div>
+                      </div>
+                      <span className="font-mono text-xs text-slate-400 w-28 shrink-0 text-right">Base: {seg.base}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+              <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Address Translation</p>
+              <p className="font-mono text-xs text-slate-600 dark:text-slate-300 mb-2">Segment ID: <span className="text-cyan-400">{segInput.segmentId}</span> | Offset: <span className="text-cyan-400">{segInput.offset}</span></p>
+              <div className="rounded-xl p-4 font-mono text-sm bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/8">
+                {segResult.valid ? (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Valid Translation</span>
+                    <span className="text-slate-600 dark:text-slate-300">Segment <span className="text-cyan-400">{segResult.segmentId}</span> + Offset <span className="text-cyan-400">{segResult.offset}</span> → Base <span className="text-cyan-400">{segResult.base}</span> + Offset <span className="text-cyan-400">{segResult.offset}</span><br/>Physical Address <span className="text-blue-400 font-bold">{segResult.physicalAddress}</span></span>
+                  </div>
+                ) : (
+                  <span className="text-rose-500 font-bold">✗ {segResult.reason}</span>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* PAGE REPLACEMENT snapshot */}
+        {selected === "PageReplacement" && steps.length > 0 && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+              Page Replacement — {replacementAlgo}
+            </p>
+            <div className="flex gap-4 text-xs font-mono mb-4">
+              <span className="text-rose-500 dark:text-rose-400">Page Faults: {pageFaults}</span>
+              <span className="text-emerald-600 dark:text-emerald-400">Hits: {steps.length - pageFaults}</span>
+              <span className="text-slate-400">Total: {steps.length}</span>
+              <span className="text-slate-400">Frames: {frames}</span>
+              <span className="text-slate-400">Reference String: {refString}</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="text-xs font-mono border-collapse min-w-max">
+                <thead>
+                  <tr>
+                    <td className="pr-3 pb-2 text-slate-400 dark:text-slate-500 whitespace-nowrap">Reference</td>
+                    {steps.map((s, i) => (
+                      <td key={i} className={`w-10 text-center pb-2 font-bold ${s.pageFault ? "text-rose-500 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>{s.page}</td>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: frames }).map((_, fi) => (
+                    <tr key={fi}>
+                      <td className="pr-3 py-1 text-slate-400 dark:text-slate-500">F{fi + 1}</td>
+                      {steps.map((s, i) => {
+                        const val = s.frames[fi];
+                        const colorIdx = val !== null ? uniquePages.indexOf(val) : -1;
+                        return (
+                          <td key={i} className="w-10 py-1 text-center">
+                            {val !== null
+                              ? <span
+                                  style={{
+                                    display: "inline-flex",
+                                    width: "28px",
+                                    height: "28px",
+                                    borderRadius: "6px",
+                                    color: "#ffffff",
+                                    fontSize: "12px",
+                                    fontWeight: 700,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    backgroundColor: [
+                                      "#06b6d4",
+                                      "#3b82f6",
+                                      "#a855f7",
+                                      "#10b981",
+                                      "#f43f5e",
+                                      "#f59e0b",
+                                      "#6366f1",
+                                      "#14b8a6",
+                                      "#ec4899",
+                                      "#f97316",
+                                    ][colorIdx % 10],
+                                  }}
+                                >
+                                  {val}
+                                </span>
+                              : <span style={{
+                                  display: "inline-block",
+                                  width: "28px",
+                                  height: "28px",
+                                  borderRadius: "6px",
+                                  backgroundColor: "#f1f5f9",
+                                  border: "1px solid #cbd5e1"
+                                }} />}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  <tr>
+                    <td className="pr-3 pt-2 text-slate-400 dark:text-slate-500" style={{ position: "relative", top: "-4px" }}>Fault</td>
+                    {steps.map((s, i) => (
+                      <td key={i} className="w-10 py-2 align-middle text-center">{s.pageFault ? <span className="text-rose-500 font-bold">✗</span> : <span className="text-emerald-500">✓</span>}</td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

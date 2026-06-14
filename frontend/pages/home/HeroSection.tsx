@@ -8,7 +8,6 @@ export default function HeroSection() {
   const [cpuValue, setCpuValue] = useState(34);
   const [memoryValue, setMemoryValue] = useState(52);
   const [processesValue, setProcessesValue] = useState(67);
-  const [tick, setTick] = useState(0);
   const [playBoot, setPlayBoot] = useState(false);
 
   useEffect(() => {
@@ -16,7 +15,6 @@ export default function HeroSection() {
       setCpuValue(prev => Math.max(20, Math.min(80, prev + (Math.random() * 8 - 4))));
       setMemoryValue(prev => Math.max(30, Math.min(85, prev + (Math.random() * 6 - 3))));
       setProcessesValue(prev => Math.max(45, Math.min(90, prev + (Math.random() * 7 - 3.5))));
-      setTick(t => t + 1);
     }, 1500);
     return () => clearInterval(interval);
   }, []);
@@ -30,7 +28,7 @@ export default function HeroSection() {
         setPlayBoot(true);
         localStorage.setItem("kernelabs_booted", "1");
       }
-    } catch (e) {
+    } catch {
     }
   }, []);
 

@@ -1,5 +1,6 @@
 "use client";
 
+import ExportButton from "@/backend/save_and_export/ExportButton";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 
@@ -131,6 +132,12 @@ function allocate(
 
 const COLORS = ["bg-cyan-500","bg-blue-500","bg-purple-500","bg-emerald-500","bg-rose-500","bg-amber-500","bg-indigo-500","bg-teal-500"];
 const TEXT_COLORS = ["text-cyan-400","text-blue-400","text-purple-400","text-emerald-400","text-rose-400","text-amber-400","text-indigo-400","text-teal-400"];
+const COLOR_HEX = ["#06b6d4", "#3b82f6", "#a855f7", "#10b981", "#f43f5e", "#f59e0b", "#6366f1", "#14b8a6"];
+
+// ── Adjustable Y position for the text inside the status pills (export PDF only) ──
+// Increase to move the label down, decrease to move it up.
+const STATUS_PILL_TEXT_Y = 18;
+const STATUS_PILL_HEIGHT = 28;
 
 export default function MemoryManagement() {
   const [selected, setSelected] = useState<Algorithm>("FirstFit");
@@ -146,7 +153,7 @@ export default function MemoryManagement() {
     else { html.classList.add("dark"); setIsDark(true); }
   }
 
-  const { results, memoryMap, computations } = allocate(selected, memBlocks, processes);
+  const { results, memoryMap } = allocate(selected, memBlocks, processes);
   const allProcessIds = results.filter((r) => r.allocated).map((r) => r.processId);
 
   function updateBlock(i: number, field: keyof MemoryBlock, value: string) {
@@ -170,6 +177,47 @@ export default function MemoryManagement() {
     }, 50);
   }
 
+  // Renders the "Allocated" / "Not Allocated" status as an SVG pill with
+  // a manually adjustable vertical (y-axis) text position. Used only in
+  // the hidden export snapshot so the exported PDF can have the label's
+  // vertical alignment adjusted independently of the live UI.
+  function renderStatusPill(allocated: boolean) {
+    const label = allocated ? "✓ Allocated" : "✗ Not Allocated";
+    const pillWidth = Math.max(60, label.length * 7 + 28);
+    const pillHeight = STATUS_PILL_HEIGHT;
+
+    const fill = allocated ? "rgba(16, 185, 129, 0.10)" : "rgba(244, 63, 94, 0.12)";
+    const stroke = allocated ? "rgba(52, 211, 153, 0.35)" : "rgba(251, 113, 133, 0.35)";
+    const textColor = allocated ? "#34d399" : "#fb7185";
+
+    return (
+      <svg width={pillWidth} height={pillHeight} style={{ display: "block" }}>
+        <rect
+          x={0}
+          y={0}
+          width={pillWidth}
+          height={pillHeight}
+          rx={pillHeight / 2}
+          ry={pillHeight / 2}
+          fill={fill}
+          stroke={stroke}
+          strokeWidth={1}
+        />
+        <text
+          x={pillWidth / 2}
+          y={STATUS_PILL_TEXT_Y} /* <-- ADJUST THIS Y VALUE TO MOVE PILL TEXT UP/DOWN */
+          textAnchor="middle"
+          fontSize="12"
+          fontFamily="monospace"
+          fontWeight="700"
+          fill={textColor}
+        >
+          {label}
+        </text>
+      </svg>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eef4f8] via-[#f0f6fa] to-[#eef4f8] dark:from-[#030d1f] dark:via-[#020b18] dark:to-[#030d1f]">
       {/* Top bar */}
@@ -179,6 +227,11 @@ export default function MemoryManagement() {
           Back to Demos
         </Link>
         <div className="flex items-center gap-3">
+          <ExportButton
+            targetId="memory-export-snapshot"
+            title="Memory Management Simulation"
+            subtitle={`Algorithm: ${algorithmInfo[selected].label}`}
+          />
           <button onClick={toggleTheme} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
             {isDark ? "☀️ Light" : "🌙 Dark"}
           </button>
@@ -384,6 +437,150 @@ export default function MemoryManagement() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── Hidden export snapshot ── */}
+      <div
+        id="memory-export-snapshot"
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: "-9999px",
+          width: "900px",
+          zIndex: -1,
+          pointerEvents: "none",
+          overflow: "visible",
+          padding: "32px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "40px",
+          background: isDark ? "#020b18" : "#f0f6fa",
+        }}
+      >
+        {/* Export title */}
+        <div className="text-center pb-4 border-b border-slate-200 dark:border-white/10">
+          <div className="text-4xl mb-4">💾</div>
+          <h1 className="text-5xl font-bold text-slate-900 dark:text-white">Memory Management</h1>
+        </div>
+
+        {/* Algorithm description */}
+        <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+          <h2 className="font-bold text-slate-900 dark:text-white text-lg mb-2">{algorithmInfo[selected].label}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{algorithmInfo[selected].description}</p>
+        </div>
+
+        {/* Input tables (read-only) */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Memory Blocks</p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-white/8">
+                  <th className="text-left py-2 px-2 font-mono text-xs text-slate-400 uppercase tracking-wider">Block ID</th>
+                  <th className="text-left py-2 px-2 font-mono text-xs text-slate-400 uppercase tracking-wider">Size (KB)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {memBlocks.map((b, i) => (
+                  <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                    <td className="py-2 px-2 font-mono text-xs text-slate-900 dark:text-white">{b.id}</td>
+                    <td className="py-2 px-2 font-mono text-xs text-slate-600 dark:text-slate-300">{b.size}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Processes</p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-white/8">
+                  <th className="text-left py-2 px-2 font-mono text-xs text-slate-400 uppercase tracking-wider">Process ID</th>
+                  <th className="text-left py-2 px-2 font-mono text-xs text-slate-400 uppercase tracking-wider">Size (KB)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {processes.map((p, i) => (
+                  <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                    <td className="py-2 px-2 font-mono text-xs text-slate-900 dark:text-white">{p.id}</td>
+                    <td className="py-2 px-2 font-mono text-xs text-slate-600 dark:text-slate-300">{p.size}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Allocation result (read-only) */}
+        {results.length > 0 && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Allocation Result</p>
+            <table className="w-full text-sm table-fixed">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-white/8">
+                  {["Process ID", "Process Size (KB)", "Allocated Block", "Block Size (KB)", "Remaining (KB)", "Status"].map((col) => (
+                    <th key={col} className="text-left py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r, i) => (
+                  <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                    <td className="py-2 px-3 font-mono text-xs font-bold" style={{ color: COLOR_HEX[allProcessIds.indexOf(r.processId) % COLOR_HEX.length] }}>{r.processId}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{r.processSize}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{r.blockId}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{r.allocated ? r.blockSize : "—"}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{r.allocated ? r.remaining : "—"}</td>
+                    <td className="py-2 px-3 align-middle">
+                      {renderStatusPill(r.allocated)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Memory map (read-only) */}
+        {memoryMap.length > 0 && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Memory Map</p>
+            <div className="flex flex-col gap-3">
+              {memoryMap.map((block) => (
+                <div key={block.id} className="flex items-center gap-3">
+                  <span className="font-mono text-xs text-slate-400 dark:text-slate-500 w-8 shrink-0">{block.id}</span>
+                  <div className="flex-1 flex h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-white/8">
+                    {block.segments.map((seg, i) => {
+                      const width = (seg.size / block.totalSize) * 100;
+                      const pidIdx = seg.processId ? allProcessIds.indexOf(seg.processId) : -1;
+
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            width: `${width}%`,
+                            backgroundColor:
+                              seg.type === "allocated"
+                                ? COLOR_HEX[pidIdx % COLOR_HEX.length]
+                                : undefined,
+                          }}
+                          className={`flex items-center justify-center text-xs font-bold shrink-0
+                            ${seg.type === "allocated"
+                              ? "text-white"
+                              : "bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-600"}`}
+                        >
+                          {seg.type === "allocated" ? seg.processId : `${seg.size}KB free`}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <span className="font-mono text-xs text-slate-400 dark:text-slate-500 w-16 shrink-0 text-right">{block.totalSize} KB</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
