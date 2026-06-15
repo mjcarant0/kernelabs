@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import PageTransition from "../frontend/ui/loading/PageTransition";
 
 export const metadata: Metadata = {
   title: "Kernelabs - Interactive OS Learning Platform",
@@ -24,7 +25,9 @@ export default function RootLayout({
         className="min-h-full flex flex-col transition-colors duration-300"
         suppressHydrationWarning
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <PageTransition>{children}</PageTransition>
+        </Providers>
       </body>
     </html>
   );

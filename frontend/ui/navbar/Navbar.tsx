@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useTheme } from "next-themes";
+import ThemeToggleSwitch from "../buttons/ThemeToggleSwitch";
 
 export default function Navbar() {
-  const { resolvedTheme, setTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -17,11 +16,10 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const isDark = resolvedTheme === "dark";
-  const toggleTheme = () => setTheme(isDark ? "light" : "dark");
+
 
   const navLinks = [
-    { label: "Home", href: "/" },
+    { label: "Home", href: "/#home" },
     { label: "Features", href: "/#features" },
     { label: "Topics", href: "/#topics" },
     { label: "Demo", href: "/#demo" },
@@ -36,13 +34,13 @@ export default function Navbar() {
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
       scrolled
         ? "bg-white/80 dark:bg-[#020b18]/85 backdrop-blur-2xl border-b border-cyan-300/30 dark:border-cyan-500/15 shadow-sm dark:shadow-[0_1px_40px_rgba(0,212,255,0.07)]"
-        : "bg-transparent"
+        : "bg-white/60 dark:bg-[#020b18]/70 backdrop-blur-xl md:bg-transparent md:backdrop-blur-none"
     }`}>
       <div className="mx-auto max-w-7xl px-6 py-4">
-        <div className="flex items-center justify-between">
+        <div className="relative flex items-center justify-between">
 
           {/* Logo */}
-          <Link href="/" className="group flex items-center gap-2" onClick={() => setIsOpen(false)}>
+          <Link href="/" className="group flex items-center gap-2 shrink-0" onClick={() => setIsOpen(false)}>
             <div className="flex items-center gap-1 px-3 py-1.5 rounded-md
               border border-cyan-400/40 dark:border-cyan-400/30
               bg-cyan-50/80 dark:bg-cyan-950/50
@@ -54,8 +52,8 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
+          {/* Desktop Nav — truly centered */}
+          <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-1">
             {navLinks.map((link) => (
               <Link
                 key={link.label}
@@ -76,27 +74,7 @@ export default function Navbar() {
 
           {/* Right controls */}
           <div className="flex items-center gap-3">
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className="p-2 rounded-xl
-                border border-slate-200 dark:border-white/10
-                bg-white/80 dark:bg-white/5
-                hover:bg-cyan-50 dark:hover:bg-cyan-950/50
-                hover:border-cyan-300 dark:hover:border-cyan-500/30
-                transition-all duration-200"
-            >
-              {isDark ? (
-                <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4.22 1.78a1 1 0 011.414 0l.707.707a1 1 0 11-1.414 1.414l-.707-.707a1 1 0 010-1.414zM17 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zm3 6v1a1 1 0 11-2 0v-1a1 1 0 112 0zm7.536-.464a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM6.343 15.657a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM10 5a5 5 0 110 10A5 5 0 0110 5z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                </svg>
-              )}
-            </button>
+            <ThemeToggleSwitch />
 
             {/* Get Started */}
             <Link href="/#features"
