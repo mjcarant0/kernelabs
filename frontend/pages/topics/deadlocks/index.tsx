@@ -8,7 +8,7 @@ import ModuleSection from "../shared/ModuleSection";
 import QuizSection from "../shared/QuizSection";
 import QuizContent from "../shared/QuizContent";
 import ThemeToggle from "../../home/ThemeToggle";
-import { deadlocksConfig, topicList } from "./topicMeta";
+import { deadlocksConfig } from "./topicMeta";
 import { quizQuestions } from "./quiz/quizData";
 import { module8Sections } from "./modules/Module8";
 
@@ -99,3 +99,4 @@ export default function DeadlocksTopic() {
     </div>
   );
 }
+

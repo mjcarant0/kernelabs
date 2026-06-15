@@ -1,5 +1,6 @@
 "use client";
 
+import ExportButton from "@/backend/save_and_export/ExportButton";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 
@@ -265,6 +266,11 @@ export default function CpuScheduling() {
           Back to Demos
         </Link>
         <div className="flex items-center gap-3">
+          <ExportButton
+            targetId="cpu-export-snapshot"
+            title="CPU Scheduling Simulation"
+            subtitle={`Algorithm: ${algorithmInfo[selected].label}`}
+          />
           <button onClick={toggleTheme}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono
               border border-slate-200 dark:border-white/10
@@ -556,6 +562,177 @@ export default function CpuScheduling() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── Hidden export snapshot ── */}
+      <div
+        id="cpu-export-snapshot"
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: "-9999px",
+          width: "900px",
+          zIndex: -1,
+          pointerEvents: "none",
+          overflow: "visible",
+          padding: "32px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "40px",
+          background: isDark ? "#020b18" : "#f0f6fa",
+        }}
+      >
+        {/* Export title */}
+        <div className="text-center pb-4 border-b border-slate-200 dark:border-white/10">
+          <div className="text-4xl mb-4">⚙️</div>
+          <h1 className="text-5xl font-bold text-slate-900 dark:text-white">CPU Scheduling</h1>
+        </div>
+
+        {/* Algorithm info */}
+        <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+          <h2 className="font-bold text-slate-900 dark:text-white text-lg mb-2">{info.label}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{info.description}</p>
+          {selected === "RoundRobin" && (
+            <p className="text-xs font-mono text-cyan-600 dark:text-cyan-400 mt-2">Time Quantum: {globalQuantum} ms</p>
+          )}
+        </div>
+
+        {/* Process table (read-only) */}
+        <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+          <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Process Table</p>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-white/8">
+                {info.columns.map((col) => (
+                  <th key={col} className="text-left py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider">{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                  <td className="py-2 px-3 font-mono text-xs text-slate-900 dark:text-white">{row.id}</td>
+                  <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{row.arrivalTime}</td>
+                  <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{row.burstTime}</td>
+                  {selected === "Priority" && (
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{row.priority}</td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Metrics (read-only) */}
+        {metrics.length > 0 && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Process Metrics</p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-white/8">
+                  {["Process", "Arrival", "Burst", "Completion", "Turnaround", "Waiting", "Response"].map((h) => (
+                    <th key={h} className="text-left py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {metrics.map((m, i) => (
+                  <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                    <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">{m!.pid}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.arrival}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.burst}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.completionTime}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.turnaroundTime}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.waitingTime}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.responseTime}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-200 dark:border-white/10">
+                  <td colSpan={4} className="py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 text-right">Averages →</td>
+                  <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">{avgTAT.toFixed(2)}</td>
+                  <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">{avgWT.toFixed(2)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        {/* Gantt Chart */}
+        {gantt.length > 0 && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+              Gantt Chart
+            </p>
+
+            <div className="flex flex-col gap-8">
+              {ganttRows.map((rowBlocks: GanttBlock[], rowIdx: number) => {
+                const timeMarkers: { time: number; leftPx: number }[] = [];
+                let cursor = 0;
+
+                rowBlocks.forEach((block: GanttBlock) => {
+                  timeMarkers.push({
+                    time: block.start,
+                    leftPx: cursor,
+                  });
+
+                  cursor += blockWidth(block.end - block.start);
+                });
+
+                timeMarkers.push({
+                  time: rowBlocks[rowBlocks.length - 1].end,
+                  leftPx: cursor,
+                });
+
+                return (
+                  <div key={rowIdx}>
+                    <div className="flex pl-3">
+                      {rowBlocks.map((block: GanttBlock, i: number) => {
+                        const pidIdx = pidList.indexOf(block.pid);
+
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              width: blockWidth(block.end - block.start),
+                              backgroundColor: COLORS[pidIdx % COLORS.length],
+                            }}
+                            className="h-10 flex items-center justify-center text-[11px]
+                            font-bold shrink-0 border-r-2 border-white/30"
+                          >
+                            {block.pid}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div
+                      className="relative pl-3"
+                      style={{ height: "28px" }}
+                    >
+                      {timeMarkers.map((marker, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            left: `calc(0.75rem + ${marker.leftPx}px)`,
+                          }}
+                          className="absolute top-0 flex flex-col items-center -translate-x-1/2"
+                        >
+                          <div className="w-px h-2 bg-slate-400" />
+                          <span className="text-[11px] font-mono mt-0.5 whitespace-nowrap">
+                            {marker.time}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

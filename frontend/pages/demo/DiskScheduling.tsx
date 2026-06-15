@@ -1,5 +1,6 @@
 "use client";
 
+import ExportButton from "@/backend/save_and_export/ExportButton";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 
@@ -30,8 +31,7 @@ function runSSTF(requests: number[], head: number) {
   const seq = [head];
   let current = head;
   while (remaining.length > 0) {
-    let closestIdx = 0;
-    let closestDist = Math.abs(remaining[0] - current);
+    let closestIdx = 0, closestDist = Math.abs(remaining[0] - current);
     for (let i = 1; i < remaining.length; i++) {
       const dist = Math.abs(remaining[i] - current);
       if (dist < closestDist) { closestDist = dist; closestIdx = i; }
@@ -49,9 +49,8 @@ function runSCAN(requests: number[], head: number, diskSize: number, direction: 
   const greater = sorted.filter((r) => r >= head);
   if (direction === "left") {
     return [head, ...[...less].reverse(), 0, ...greater];
-  } else {
-    return [head, ...greater, diskSize - 1, ...[...less].reverse()];
   }
+  return [head, ...greater, diskSize - 1, ...[...less].reverse()];
 }
 
 function runLOOK(requests: number[], head: number, direction: Direction) {
@@ -60,9 +59,8 @@ function runLOOK(requests: number[], head: number, direction: Direction) {
   const greater = sorted.filter((r) => r >= head);
   if (direction === "left") {
     return [head, ...[...less].reverse(), ...greater];
-  } else {
-    return [head, ...greater, ...[...less].reverse()];
   }
+  return [head, ...greater, ...[...less].reverse()];
 }
 
 function runCSCAN(requests: number[], head: number, diskSize: number, direction: Direction) {
@@ -71,9 +69,8 @@ function runCSCAN(requests: number[], head: number, diskSize: number, direction:
   const greater = sorted.filter((r) => r >= head);
   if (direction === "left") {
     return [head, ...[...less].reverse(), 0, diskSize - 1, ...[...greater].reverse()];
-  } else {
-    return [head, ...greater, diskSize - 1, 0, ...less];
   }
+  return [head, ...greater, diskSize - 1, 0, ...less];
 }
 
 function runCLOOK(requests: number[], head: number, direction: Direction) {
@@ -81,12 +78,13 @@ function runCLOOK(requests: number[], head: number, direction: Direction) {
   const less = sorted.filter((r) => r < head);
   const greater = sorted.filter((r) => r >= head);
   if (direction === "left") {
+    if (less.length === 0) return [head, ...[...greater].reverse()];
     if (greater.length === 0) return [head, ...[...less].reverse()];
     return [head, ...[...less].reverse(), ...[...greater].reverse()];
-  } else {
-    if (less.length === 0) return [head, ...greater];
-    return [head, ...greater, ...less];
   }
+  if (greater.length === 0) return [head, ...less];
+  if (less.length === 0) return [head, ...greater];
+  return [head, ...greater, ...less];
 }
 
 function computeSequence(algo: Algorithm, requests: number[], head: number, diskSize: number, direction: Direction): number[] {
@@ -102,8 +100,8 @@ function computeSequence(algo: Algorithm, requests: number[], head: number, disk
   }
 }
 
-const POINT_COLOR = "#06b6d4"; // cyan-500
-const LINE_COLOR_LIGHT = "#94a3b8"; // slate-400
+const POINT_COLOR = "#06b6d4";
+const LINE_COLOR_LIGHT = "#94a3b8";
 const LINE_COLOR_DARK = "#64748b";
 
 export default function DiskScheduling() {
@@ -115,6 +113,7 @@ export default function DiskScheduling() {
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => { setIsDark(document.documentElement.classList.contains("dark")); }, []);
+
   function toggleTheme() {
     const html = document.documentElement;
     if (html.classList.contains("dark")) { html.classList.remove("dark"); setIsDark(false); }
@@ -130,9 +129,8 @@ export default function DiskScheduling() {
   const total = totalMovement(sequence);
   const hasInput = requests.length > 0 && head !== "" && maxCylinder !== "";
 
-  // ── SVG chart ──
   const chartWidth = 760;
-  const chartHeight = sequence.length * 46 + 60;
+  const chartHeight = sequence.length * 46 + 80;
   const marginX = 40;
   const usableWidth = chartWidth - marginX * 2;
 
@@ -140,7 +138,6 @@ export default function DiskScheduling() {
     return marginX + (cyl / (diskSizeNum - 1)) * usableWidth;
   }
 
-  // Axis tick marks: requests + head + 0 + max, sorted, deduped
   const tickValues = [...new Set([0, diskSizeNum - 1, headNum, ...requests])].sort((a, b) => a - b);
 
   return (
@@ -152,6 +149,11 @@ export default function DiskScheduling() {
           Back to Demos
         </Link>
         <div className="flex items-center gap-3">
+          <ExportButton
+            targetId="disk-export-snapshot"
+            title="Disk Scheduling Simulation"
+            subtitle={`Algorithm: ${info.label}`}
+          />
           <button onClick={toggleTheme} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
             {isDark ? "☀️ Light" : "🌙 Dark"}
           </button>
@@ -241,8 +243,6 @@ export default function DiskScheduling() {
                 )}
               </div>
             </div>
-
-            {/* Stats */}
             {hasInput ? (
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex flex-wrap gap-4 text-xs font-mono">
                 <span className="text-cyan-600 dark:text-cyan-400">Total Head Movement: <span className="font-bold">{total}</span> cylinders</span>
@@ -288,53 +288,58 @@ export default function DiskScheduling() {
               <>
                 <div className="overflow-x-auto">
                   <svg width={chartWidth} height={chartHeight} className="min-w-[600px]">
-                    {/* Top axis line */}
+                    {/* Axis line */}
                     <line x1={marginX} y1={20} x2={chartWidth - marginX} y2={20}
                       stroke={isDark ? LINE_COLOR_DARK : LINE_COLOR_LIGHT} strokeWidth={1.5} />
-
                     {/* Tick marks and labels */}
                     {tickValues.map((val, i) => (
                       <g key={i}>
                         <line x1={xPos(val)} y1={15} x2={xPos(val)} y2={25}
                           stroke={isDark ? LINE_COLOR_DARK : LINE_COLOR_LIGHT} strokeWidth={1.5} />
                         <text x={xPos(val)} y={12} textAnchor="middle" fontSize="11" fontFamily="monospace"
-                          fill={isDark ? "#cbd5e1" : "#475569"}>
-                          {val}
-                        </text>
+                          fill={isDark ? "#cbd5e1" : "#475569"}>{val}</text>
                       </g>
                     ))}
-
-                    {/* Zigzag path connecting sequence */}
-                    {sequence.map((cyl, i) => {
-                      if (i === sequence.length - 1) return null;
-                      const x1 = xPos(cyl);
-                      const y1 = 20 + i * 46 + 10;
-                      const x2 = xPos(sequence[i + 1]);
-                      const y2 = 20 + (i + 1) * 46 + 10;
-                      return (
-                        <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-                          stroke={POINT_COLOR} strokeWidth={2} markerEnd="url(#arrowhead)" />
-                      );
-                    })}
-
                     {/* Arrowhead marker */}
                     <defs>
-                      <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
-                        <path d="M0,0 L8,4 L0,8 Z" fill={POINT_COLOR} />
+                      <marker id="arrowhead" markerWidth="7" markerHeight="7" refX="2" refY="2.5" orient="auto">
+                        <path d="M0,0 L5,2.5 L0,5 Z" fill={POINT_COLOR} />
                       </marker>
                     </defs>
-
-                    {/* Points + labels */}
+                    {/* Seek lines — tip stops just at dot edge */}
                     {sequence.map((cyl, i) => {
-                      const x = xPos(cyl);
-                      const y = 20 + i * 46 + 10;
+                      if (i === sequence.length - 1) return null;
+                      const x1 = xPos(cyl), y1 = 20 + i * 46 + 40;
+                      const x2 = xPos(sequence[i + 1]), y2 = 20 + (i + 1) * 46 + 40;
+                      const dotR = 3, arrowLen = 5;
+                      const dx = x2 - x1, dy = y2 - y1;
+                      const len = Math.sqrt(dx * dx + dy * dy);
+                      const ux = dx / len, uy = dy / len;
+                      const ex = x2 - ux * (dotR + arrowLen);
+                      const ey = y2 - uy * (dotR + arrowLen);
+                      return <line key={i} x1={x1} y1={y1} x2={ex} y2={ey} stroke={POINT_COLOR} strokeWidth={1.5} markerEnd="url(#arrowhead)" />;
+                    })}
+                    {/* Points and labels — label offset away from incoming line */}
+                    {sequence.map((cyl, i) => {
+                      const x = xPos(cyl), y = 20 + i * 46 + 40;
+                      const prevX = i > 0 ? xPos(sequence[i - 1]) : null;
+                      const prevY = i > 0 ? (20 + (i - 1) * 46 + 40) : null;
+                      let labelX = x + 14;
+                      let labelY = y - 8;
+                      let anchor: "start" | "end" | "middle" = "start";
+                      if (prevX !== null && prevY !== null) {
+                        const fromRight = prevX > x;
+                        const fromBelow = prevY > y;
+                        if (fromRight && !fromBelow) { labelX = x - 10; anchor = "end"; labelY = y - 8; }
+                        else if (!fromRight && !fromBelow) { labelX = x + 10; anchor = "start"; labelY = y - 8; }
+                        else if (fromRight && fromBelow) { labelX = x + 10; anchor = "start"; labelY = y + 16; }
+                        else { labelX = x - 10; anchor = "end"; labelY = y + 16; }
+                      }
                       return (
                         <g key={i}>
-                          <circle cx={x} cy={y} r={5} fill={i === 0 ? "#f59e0b" : POINT_COLOR} />
-                          <text x={x} y={y - 12} textAnchor="middle" fontSize="11" fontWeight="bold" fontFamily="monospace"
-                            fill={isDark ? "#e2e8f0" : "#1e293b"}>
-                            {cyl}
-                          </text>
+                          <circle cx={x} cy={y} r={4} fill={i === 0 ? "#f59e0b" : POINT_COLOR} />
+                          <text x={labelX} y={labelY} textAnchor={anchor} fontSize="11" fontWeight="bold" fontFamily="monospace"
+                            fill={isDark ? "#e2e8f0" : "#1e293b"}>{cyl}</text>
                         </g>
                       );
                     })}
@@ -350,8 +355,184 @@ export default function DiskScheduling() {
               </div>
             )}
           </div>
-
         </div>
+      </div>
+
+      {/* ── Hidden export snapshot ── */}
+      <div
+        id="disk-export-snapshot"
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: "-9999px",
+          width: "900px",
+          zIndex: -1,
+          pointerEvents: "none",
+          overflow: "visible",
+          padding: "10px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "20px",
+          background: isDark ? "#020b18" : "#f0f6fa",
+        }}
+      >
+        {/* Export title */}
+        <div className="text-center pb-2 border-b border-slate-200 dark:border-white/10">
+          <div className="text-4xl mb-4">💽</div>
+          <h1 className="text-5xl font-bold text-slate-900 dark:text-white">Disk Scheduling</h1>
+        </div>
+
+        {/* Algorithm description */}
+        <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-4">
+          <h2 className="font-bold text-slate-900 dark:text-white text-lg mb-1">{info.label}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{info.description}</p>
+        </div>
+
+        {/* Configuration summary */}
+        {hasInput && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-4">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Configuration</p>
+            <div className="flex flex-col gap-2 font-mono text-sm">
+              <span className="text-slate-600 dark:text-slate-300">Request Queue: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{requests.join(", ")}</span></span>
+              <span className="text-slate-600 dark:text-slate-300">Initial Head: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{headNum}</span></span>
+              <span className="text-slate-600 dark:text-slate-300">Max Cylinder: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{diskSizeNum - 1}</span></span>
+              {info.needsDirection && (
+                <span className="text-slate-600 dark:text-slate-300">Direction: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{direction === "left" ? "← Toward 0" : "Toward Max →"}</span></span>
+              )}
+              <span className="text-cyan-600 dark:text-cyan-400 font-bold mt-1">Total Head Movement: {total} cylinders</span>
+            </div>
+          </div>
+        )}
+
+        {/* Seek sequence */}
+        {hasInput && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-4">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Seek Sequence</p>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px" }}>
+              {sequence.map((cyl, i) => {
+                const label = String(cyl);
+                const pillWidth = Math.max(48, label.length * 11 + 28);
+                const pillHeight = 28;
+                const isLast = i === sequence.length - 1;
+                const svgWidth = isLast ? pillWidth : pillWidth + 20;
+                return (
+                  <span key={i} style={{ display: "flex", alignItems: "center" }}>
+                    <svg width={svgWidth} height={pillHeight} style={{ display: "block" }}>
+                      <rect
+                        x={0}
+                        y={0}
+                        width={pillWidth}
+                        height={pillHeight}
+                        rx={pillHeight / 2}
+                        ry={pillHeight / 2}
+                        fill={i === 0 ? "rgba(245, 158, 11, 0.15)" : "rgba(6, 182, 212, 0.15)"}
+                        stroke={i === 0 ? "rgba(245, 158, 11, 0.3)" : "rgba(34, 211, 238, 0.3)"}
+                        strokeWidth={1}
+                      />
+                      <text
+                        x={pillWidth / 2}
+                        y={18} /* <-- ADJUST THIS Y VALUE TO MOVE PILL TEXT UP/DOWN */
+                        textAnchor="middle"
+                        fontSize="12"
+                        fontFamily="monospace"
+                        fontWeight="700"
+                        fill={i === 0 ? (isDark ? "#fbbf24" : "#d97706") : (isDark ? "#22d3ee" : "#0891b2")}
+                      >
+                        {label}
+                      </text>
+                      {!isLast && (
+                        <text
+                          x={pillWidth + 10}
+                          y={18} /* <-- ADJUST THIS Y VALUE TO MOVE ARROW UP/DOWN */
+                          textAnchor="middle"
+                          fontSize="12"
+                          fontFamily="monospace"
+                          fill="#94a3b8"
+                        >
+                          →
+                        </text>
+                      )}
+                    </svg>
+                  </span>
+                );
+              })}
+            </div>
+            <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-2">
+              <span style={{ color: "#f59e0b" }}>●</span> Starting head position &nbsp;&nbsp; <span style={{ color: POINT_COLOR }}>●</span> Serviced requests in order
+            </p>
+          </div>
+        )}
+
+        {/* Seek graph */}
+        {hasInput && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-4">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Seek Graph</p>
+            <svg width={chartWidth} height={chartHeight}>
+              {/* Axis line */}
+              <line x1={marginX} y1={20} x2={chartWidth - marginX} y2={20}
+                stroke={isDark ? LINE_COLOR_DARK : LINE_COLOR_LIGHT} strokeWidth={1.5} />
+              {/* Tick marks and labels */}
+              {tickValues.map((val, i) => (
+                <g key={i}>
+                  <line x1={xPos(val)} y1={15} x2={xPos(val)} y2={25}
+                    stroke={isDark ? LINE_COLOR_DARK : LINE_COLOR_LIGHT} strokeWidth={1.5} />
+                  <text x={xPos(val)} y={12} textAnchor="middle" fontSize="11" fontFamily="monospace"
+                    fill={isDark ? "#cbd5e1" : "#475569"}>{val}</text>
+                </g>
+              ))}
+              {/* Arrowhead marker — unique id to avoid conflict with main chart */}
+              <defs>
+                <marker id="export-arrowhead" markerWidth="7" markerHeight="7" refX="2" refY="2.5" orient="auto">
+                  <path d="M0,0 L5,2.5 L0,5 Z" fill={POINT_COLOR} />
+                </marker>
+              </defs>
+              {/* Seek lines */}
+              {sequence.map((cyl, i) => {
+                if (i === sequence.length - 1) return null;
+                const x1 = xPos(cyl), y1 = 20 + i * 46 + 40;
+                const x2 = xPos(sequence[i + 1]), y2 = 20 + (i + 1) * 46 + 40;
+                const dotR = 3, arrowLen = 5;
+                const dx = x2 - x1, dy = y2 - y1;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                const ux = dx / len, uy = dy / len;
+                const ex = x2 - ux * (dotR + arrowLen);
+                const ey = y2 - uy * (dotR + arrowLen);
+                return <line key={i} x1={x1} y1={y1} x2={ex} y2={ey} stroke={POINT_COLOR} strokeWidth={1.5} markerEnd="url(#export-arrowhead)" />;
+              })}
+              {/* Points and labels */}
+              {sequence.map((cyl, i) => {
+                const x = xPos(cyl), y = 20 + i * 46 + 40;
+                const prevX = i > 0 ? xPos(sequence[i - 1]) : null;
+                const prevY = i > 0 ? (20 + (i - 1) * 46 + 40) : null;
+                let labelX = x + 14;
+                let labelY = y - 8;
+                let anchor: "start" | "end" | "middle" = "start";
+                if (prevX !== null && prevY !== null) {
+                  const fromRight = prevX > x;
+                  const fromBelow = prevY > y;
+                  if (fromRight && !fromBelow) { labelX = x - 10; anchor = "end"; labelY = y - 8; }
+                  else if (!fromRight && !fromBelow) { labelX = x + 10; anchor = "start"; labelY = y - 8; }
+                  else if (fromRight && fromBelow) { labelX = x + 10; anchor = "start"; labelY = y + 16; }
+                  else { labelX = x - 10; anchor = "end"; labelY = y + 16; }
+                }
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r={4} fill={i === 0 ? "#f59e0b" : POINT_COLOR} />
+                    <text x={labelX} y={labelY} textAnchor={anchor} fontSize="11" fontWeight="bold" fontFamily="monospace"
+                      fill={isDark ? "#e2e8f0" : "#1e293b"}>{cyl}</text>
+                  </g>
+                );
+              })}
+            </svg>
+            <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-2">
+              Horizontal axis = cylinder position (0 – {diskSizeNum - 1}). Each row down represents the next step in the seek sequence.
+            </p>
+            <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-1">
+              <span style={{ color: "#f59e0b" }}>●</span> Starting head position &nbsp;&nbsp; <span style={{ color: POINT_COLOR }}>●</span> Serviced requests in order
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
