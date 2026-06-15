@@ -22,7 +22,7 @@ export default function TopicCard({ icon, title, description, href = "#", classN
       hover:shadow-lg hover:shadow-violet-500/10 dark:hover:shadow-violet-500/15
       hover:border-violet-300/60 dark:hover:border-violet-500/30
       neon-border-cyan
-      p-3 ${className}`}> 
+      p-5 sm:p-6 ${className}`}> 
 
       {/* Hover gradient */}
       <div className="absolute inset-0 rounded-2xl
@@ -51,14 +51,14 @@ export default function TopicCard({ icon, title, description, href = "#", classN
       </div>
 
       <div className="relative z-10 pr-6">
-        <div className="mb-3 text-2xl transition-transform duration-300 group-hover:scale-110 inline-block">{icon}</div>
-        <h3 className="mb-1.5 font-semibold text-sm
+        <div className="mb-3 text-3xl sm:text-2xl transition-transform duration-300 group-hover:scale-110 inline-block">{icon}</div>
+        <h3 className="mb-1.5 font-semibold text-sm sm:text-base
           text-slate-800 dark:text-white
           group-hover:text-violet-700 dark:group-hover:text-violet-300
           transition-colors duration-200">
           {title}
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{description}</p>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{description}</p>
       </div>
     </div>
   );
