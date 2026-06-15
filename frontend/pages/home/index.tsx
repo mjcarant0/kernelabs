@@ -13,7 +13,9 @@ export default function HomePage() {
   return (
     <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300">
       <Navbar />
-      <HeroSection />
+      <div id="home">
+        <HeroSection />
+      </div>
       <TutorialSection />
       <FeaturesSection />
       <TopicsSection />

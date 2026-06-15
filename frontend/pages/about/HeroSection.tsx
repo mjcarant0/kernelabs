@@ -28,7 +28,7 @@ export default function HeroSection() {
             </h1>
 
             <p className="mx-auto max-w-3xl text-(--text-secondary) font-mono leading-relaxed text-lg md:text-xl">
-              Kernelabs is a premium OS learning environment. We design immersive
+              KerneLabs is a premium OS learning environment. We design immersive
               simulations and interactive lessons that make kernel concepts tangible
               and approachable for learners and practitioners.
             </p>
