@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import CTAButton from "../../ui/buttons/CTAButton";
 import ScrollReveal from "../../ui/animations/ScrollReveal";
 
@@ -9,6 +9,16 @@ export default function HeroSection() {
   const [memoryValue, setMemoryValue] = useState(52);
   const [processesValue, setProcessesValue] = useState(67);
   const [playBoot, setPlayBoot] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+  const [isHovering, setIsHovering] = useState(false);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100,
+    });
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -63,13 +73,30 @@ export default function HeroSection() {
   ];
 
   return (
-    <section className={`relative min-h-screen overflow-hidden pt-16
+    <section
+      className={`relative min-h-screen overflow-hidden pt-16
       bg-gradient-to-b from-[#e8f4f8] via-[#f0f4f8] to-[#e8eef5]
-      dark:from-[#020b18] dark:via-[#030d1f] dark:to-[#020b18] hero-boot${playBoot ? " boot-run" : ""}`}>
+      dark:from-[#020b18] dark:via-[#030d1f] dark:to-[#020b18] hero-boot${playBoot ? " boot-run" : ""}`}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
 
       {/* grid overlay */}
       <div className="absolute inset-0 pointer-events-none">
+        {/* Base grid */}
         <div className="absolute inset-0 boot-grid os-grid opacity-100" />
+
+        {/* Highlight grid lines near cursor */}
+        <div
+          className="absolute inset-0 os-grid-highlight transition-opacity duration-300"
+          style={{
+            opacity: isHovering ? 1 : 0,
+            WebkitMaskImage: `radial-gradient(250px circle at ${mousePos.x}% ${mousePos.y}%, black 0%, transparent 100%)`,
+            maskImage: `radial-gradient(250px circle at ${mousePos.x}% ${mousePos.y}%, black 0%, transparent 100%)`,
+          }}
+        />
+
         {/* Fade grid at bottom */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#f0f4f8]/80 dark:to-[#020b18]/80" />
       </div>

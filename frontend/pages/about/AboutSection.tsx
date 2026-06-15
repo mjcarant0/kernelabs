@@ -16,9 +16,9 @@ export default function AboutSection() {
                 <div className="inline-flex items-center gap-2 rounded-full border border-(--card-border) bg-white/50 dark:bg-white/5 px-3 py-1 text-[10px] font-mono uppercase tracking-[0.35em] text-cyan-700 dark:text-cyan-300 mb-5">
                   Overview
                 </div>
-                <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-5 text-(--text-primary)">What is Kernelabs?</h3>
+                <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-5 text-(--text-primary)">What is KerneLabs?</h3>
                 <p className="text-(--text-secondary) mb-6 leading-relaxed font-mono text-base md:text-lg max-w-3xl">
-                  Kernelabs is an immersive Operating System learning platform that
+                  KerneLabs is an immersive Operating System learning platform that
                   blends interactive simulations, guided exercises, and system-level
                   visualizations. Learners can experiment with scheduling, memory
                   models, and process management in a controlled, realistic UI.

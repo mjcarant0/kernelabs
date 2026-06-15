@@ -3,6 +3,7 @@
 import ExportButton from "@/backend/save_and_export/ExportButton";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import ThemeToggleSwitch from "../../ui/buttons/ThemeToggleSwitch";
 
 type Algorithm = "FCFS" | "SSTF" | "SCAN" | "CSCAN" | "LOOK" | "CLOOK";
 type Direction = "left" | "right";
@@ -154,9 +155,7 @@ export default function DiskScheduling() {
             title="Disk Scheduling Simulation"
             subtitle={`Algorithm: ${info.label}`}
           />
-          <button onClick={toggleTheme} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
-            {isDark ? "☀️ Light" : "🌙 Dark"}
-          </button>
+          <ThemeToggleSwitch isDark={isDark} onToggle={toggleTheme} small />
           <div className="flex items-center gap-2 font-mono text-xs text-cyan-600 dark:text-cyan-400">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />SIMULATOR · LIVE
           </div>
