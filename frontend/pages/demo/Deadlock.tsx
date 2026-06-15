@@ -368,7 +368,7 @@ export default function Deadlock() {
                 <div className="text-sm text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-2"><span>🟢</span> No deadlocked processes found. Go to Detection tab to configure.</div>
               ) : (
                 <div className="flex flex-col gap-3">
-{detResult.deadlocked.map((pid) => (
+{detResult.deadlocked.map((pid, i) => (
                     <div key={pid} className="flex items-center justify-between rounded-xl border border-rose-300/40 dark:border-rose-500/20 bg-rose-50/50 dark:bg-rose-950/10 px-4 py-3">
                       <div className="flex items-center gap-3">
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${COLORS[i % COLORS.length]}`}>{pid}</span>
@@ -725,7 +725,7 @@ export default function Deadlock() {
               <div className="text-sm text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-2"><span>🟢</span> No deadlocked processes found.</div>
             ) : (
               <div className="flex flex-col gap-3">
-                {detResult.deadlocked.map((pid) => (
+{detResult.deadlocked.map((pid) => (
                   <div key={pid} className="flex items-center justify-between rounded-xl border border-rose-300/40 dark:border-rose-500/20 bg-rose-50/50 dark:bg-rose-950/10 px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span
