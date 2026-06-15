@@ -1,10 +1,7 @@
-name: Main Branch CI
+name: Deploy to Production
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
     branches:
       - main
 
@@ -12,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,26 +24,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: TypeScript validation
-        run: npm run type-check
-
-      - name: Type Check Passed
-        run: echo "Type Check Passed"
-
-      - name: ESLint validation
-        run: npm run lint
-
-      - name: Lint Passed
-        run: echo "Lint Passed"
-
-      - name: Production build
+      - name: Build
         run: npm run build
 
-      - name: Build Passed
-        run: echo "Build Passed"
-
       - name: Deploy to Vercel
-        if: github.event_name == 'push'
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}

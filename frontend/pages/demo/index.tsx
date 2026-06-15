@@ -1,17 +1,19 @@
 "use client";
 
+import React from "react";
 import CpuScheduling from "./CpuScheduling";
 import MemoryManagement from "./MemoryManagement";
 import VirtualMemory from "./VirtualMemory";
+import DiskScheduling from "./DiskScheduling";
 import Deadlock from "./Deadlock";
 import Link from "next/link";
-import { ComponentType } from "react";
 
-// Demo router: map slug to page
-const pages: Record<string, ComponentType> = {
+// This is the router — it looks at the slug and picks the right page
+const pages: Record<string, React.ComponentType> = {
   "cpu-scheduling": CpuScheduling,
   "memory-management": MemoryManagement,
   "virtual-memory": VirtualMemory,
+  "disk-scheduling": DiskScheduling,
   "deadlock": Deadlock,
 };
 
@@ -22,7 +24,7 @@ interface Props {
 export default function DemoIndex({ slug }: Props) {
   const Page = pages[slug];
 
-  // show not found if page missing
+  // If the slug doesn't match any page, show a not found message
   if (!Page) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
@@ -36,6 +38,6 @@ export default function DemoIndex({ slug }: Props) {
     );
   }
 
-  // render page
+  // Render the matching page
   return <Page />;
 }

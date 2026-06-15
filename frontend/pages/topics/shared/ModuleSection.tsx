@@ -35,14 +35,7 @@ const getMainTopicId = (id: string): string => {
 };
 
 export default function ModuleSection({
-  title,
-  content,
-  moduleNumber,
-  totalModules,
   sections = [],
-  onNext,
-  onPrevious,
-  isLastModule = false,
   onQuizStart,
 }: ModuleSectionProps) {
   // content sections
@@ -309,3 +302,4 @@ export default function ModuleSection({
     </div>
   );
 }
+
