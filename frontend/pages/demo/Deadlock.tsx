@@ -8,7 +8,7 @@ type Strategy = "Detection" | "Prevention" | "Recovery";
 
 const strategyInfo: Record<Strategy, { label: string; description: string }> = {
   Detection: { label: "Deadlock Detection", description: "Periodically checks the system for deadlock by examining resource allocation and process requests. Uses the Wait-For Graph to detect circular waits." },
-  Prevention: { label: "Deadlock Prevention (Banker's Algorithm)", description: "Ensures the system never enters an unsafe state by simulating resource allocation before granting requests. A safe sequence means no deadlock is possible." },
+  Prevention: { label: "Deadlock Prevention (Banker&apos;s Algorithm)", description: "Ensures the system never enters an unsafe state by simulating resource allocation before granting requests. A safe sequence means no deadlock is possible." },
   Recovery: { label: "Deadlock Recovery", description: "Once a deadlock is detected, the OS can recover by terminating one or more processes or by preempting resources from a process to break the cycle." },
 };
 
@@ -172,7 +172,7 @@ export default function Deadlock() {
           <span className="bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-300 dark:to-blue-300 bg-clip-text text-transparent">Deadlock</span>
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-mono text-sm max-w-xl mx-auto">
-          <span className="text-cyan-500">&gt;</span> Simulate deadlock detection, prevention using Banker's Algorithm, and recovery strategies
+          <span className="text-cyan-500">&gt;</span> Simulate deadlock detection, prevention using Banker&apos;s Algorithm, and recovery strategies
         </p>
       </div>
 
@@ -185,7 +185,7 @@ export default function Deadlock() {
               {(Object.keys(strategyInfo) as Strategy[]).map((s) => (
                 <button key={s} onClick={() => setSelected(s)}
                   className={`text-left px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${selected === s ? "bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-400/40 dark:border-cyan-500/30" : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent"}`}>
-                  {strategyInfo[s].label.replace(" (Banker's Algorithm)","")}
+                  {strategyInfo[s].label.replace(" (Banker&apos;s Algorithm)","")}
                 </button>
               ))}
             </div>
@@ -288,7 +288,7 @@ export default function Deadlock() {
               </div>
               <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">Banker's Algorithm Table</p>
+                  <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">Banker&apos;s Algorithm Table</p>
                   <button onClick={addBankProc} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-400/30 hover:bg-cyan-500/20 transition-colors">+ Add</button>
                 </div>
                 <div className="overflow-x-auto">
@@ -368,7 +368,7 @@ export default function Deadlock() {
                 <div className="text-sm text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-2"><span>🟢</span> No deadlocked processes found. Go to Detection tab to configure.</div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {detResult.deadlocked.map((pid, i) => (
+{detResult.deadlocked.map((pid) => (
                     <div key={pid} className="flex items-center justify-between rounded-xl border border-rose-300/40 dark:border-rose-500/20 bg-rose-50/50 dark:bg-rose-950/10 px-4 py-3">
                       <div className="flex items-center gap-3">
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${COLORS[i % COLORS.length]}`}>{pid}</span>
@@ -572,7 +572,7 @@ export default function Deadlock() {
             <ResourceReadOnly values={bankAvail} />
           </div>
           <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
-            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Banker's Algorithm Table</p>
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Banker&apos;s Algorithm Table</p>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-white/8">
@@ -725,7 +725,7 @@ export default function Deadlock() {
               <div className="text-sm text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-2"><span>🟢</span> No deadlocked processes found.</div>
             ) : (
               <div className="flex flex-col gap-3">
-                {detResult.deadlocked.map((pid, i) => (
+                {detResult.deadlocked.map((pid) => (
                   <div key={pid} className="flex items-center justify-between rounded-xl border border-rose-300/40 dark:border-rose-500/20 bg-rose-50/50 dark:bg-rose-950/10 px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span
