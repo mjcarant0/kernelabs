@@ -26,6 +26,12 @@ export default function DemoSection() {
       href: "/demo/virtual-memory",
     },
     {
+      icon: "💽",
+      title: "Disk Scheduling",
+      description: "Visualize how FCFS, SSTF, SCAN, C-SCAN, LOOK, and C-LOOK algorithms order disk seek requests.",
+      href: "/demo/disk-scheduling",
+    },
+    {
       icon: "⛓️",
       title: "Deadlock",
       description: "Understand deadlock conditions and explore detection, prevention, and recovery strategies.",

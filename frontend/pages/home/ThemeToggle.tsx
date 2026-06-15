@@ -4,7 +4,7 @@ import React from "react";
 import { useTheme } from "next-themes";
 
 export default function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
 
   return (
     <button
@@ -25,3 +25,4 @@ export default function ThemeToggle() {
     </button>
   );
 }
+

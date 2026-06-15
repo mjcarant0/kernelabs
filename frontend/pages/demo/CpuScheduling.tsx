@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import ExportButton from "@/backend/save_and_export/ExportButton";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 
 type Algorithm = "FCFS" | "SJF" | "Priority" | "RoundRobin";
@@ -52,8 +53,7 @@ function defaultRow(algo: Algorithm, index: number): Process {
 
 function computeGantt(algo: Algorithm, processes: Process[], globalQuantum: number): GanttBlock[] {
   const valid = processes.filter(
-    (p) => p.id && p.arrivalTime !== "" && p.burstTime !== "" &&
-      Number(p.burstTime) > 0
+    (p) => p.id && p.arrivalTime !== "" && p.burstTime !== "" && Number(p.burstTime) > 0
   );
   if (valid.length === 0) return [];
 
@@ -129,24 +129,95 @@ function computeGantt(algo: Algorithm, processes: Process[], globalQuantum: numb
   return gantt;
 }
 
-const COLORS = [
-  "bg-cyan-500", "bg-blue-500", "bg-purple-500", "bg-emerald-500",
-  "bg-rose-500", "bg-amber-500", "bg-indigo-500", "bg-teal-500",
+function computeMetrics(processes: Process[], gantt: GanttBlock[]) {
+  const valid = processes.filter(
+    (p) => p.id && p.arrivalTime !== "" && p.burstTime !== "" && Number (p.burstTime) > 0
+  ) ;
+  if (valid.length === 0 || gantt.length === 0) return [];
+
+  return valid.map ((p) => {
+    const blocks = gantt.filter((b) => b.pid === p.id);
+    if (blocks.length === 0) return null;
+
+    const arrival = Number(p.arrivalTime);
+    const burst = Number(p.burstTime);
+    const completionTime = Math.max(...blocks.map((b) => b.end));
+    const firstStart = Math.min(...blocks.map((b) => b.start));
+    const turnaroundTime = completionTime - arrival;
+    const waitingTime = turnaroundTime - burst;
+    const responseTime = firstStart - arrival;
+
+    return {
+      pid: p.id,
+      arrival,
+      burst,
+      completionTime,
+      turnaroundTime,
+      waitingTime,
+      responseTime,
+    };
+  }).filter(Boolean)
+}
+
+function chunkGantt(gantt: GanttBlock[], maxPerRow: number): GanttBlock[][] {
+  const rows: GanttBlock[][] = [];
+  for (let i = 0; i < gantt.length; i += maxPerRow) {
+    rows.push(gantt.slice(i, i + maxPerRow));
+  }
+  return rows;
+}
+
+const COLORS_LIGHT = [
+  "#d5f3f9", "#a1d9e4",
 ];
-const TEXT_COLORS = [
-  "text-cyan-500", "text-blue-500", "text-purple-500", "text-emerald-500",
-  "text-rose-500", "text-amber-500", "text-indigo-500", "text-teal-500",
+
+const COLORS_DARK = [
+  "#073349", "#1c526c",
 ];
+
+const BLOCKS_PER_ROW = 10;
+const PX_PER_UNIT = 10;
+const MIN_BLOCK_WIDTH = 48;
+const MAX_BLOCK_WIDTH = 80;
+
+function blockWidth(burstTime: number): number {
+  return Math.min(Math.max(burstTime * PX_PER_UNIT, MIN_BLOCK_WIDTH), MAX_BLOCK_WIDTH);
+}
 
 export default function CpuScheduling() {
   const [selected, setSelected] = useState<Algorithm>("FCFS");
-  const [rows, setRows] = useState<Process[]>([defaultRow("FCFS", 0), defaultRow("FCFS", 1), defaultRow("FCFS", 2)]);
+  const [rows, setRows] = useState<Process[]>([
+    defaultRow("FCFS", 0),
+    defaultRow("FCFS", 1),
+    defaultRow("FCFS", 2),
+  ]);
   const [globalQuantum, setGlobalQuantum] = useState<string>("2");
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  const COLORS = isDark ? COLORS_DARK : COLORS_LIGHT;
+
+  function toggleTheme() {
+    const html = document.documentElement;
+    if (html.classList.contains("dark")) {
+      html.classList.remove("dark");
+      setIsDark(false);
+    } else {
+      html.classList.add("dark");
+      setIsDark(true);
+    }
+  }
 
   const info = algorithmInfo[selected];
-  const gantt = computeGantt(selected, rows, Number(globalQuantum));
-  const totalTime = gantt.length > 0 ? gantt[gantt.length - 1].end : 0;
+  const gantt = computeGantt(selected, rows, Number(globalQuantum) || 1);
   const pidList = [...new Set(gantt.map((b) => b.pid))];
+  const ganttRows = chunkGantt(gantt, BLOCKS_PER_ROW);
+  const metrics = computeMetrics(rows, gantt);
+  const avgTAT = metrics.length ? metrics.reduce((s,m) => s + m!.turnaroundTime, 0) / metrics.length : 0;
+  const avgWT = metrics.length ? metrics.reduce((s, m) => s + m!.waitingTime, 0) / metrics.length : 0;
 
   function handleAlgoChange(algo: Algorithm) {
     setSelected(algo);
@@ -154,16 +225,30 @@ export default function CpuScheduling() {
   }
 
   function addRow() {
-    setRows((prev) => [...prev, defaultRow(selected, prev.length)]);
+    setRows((prev: Process[]) => [...prev, defaultRow(selected, prev.length)]);
   }
 
   function removeRow(i: number) {
     if (rows.length <= 1) return;
-    setRows((prev) => prev.filter((_, idx) => idx !== i));
+    setRows((prev: Process[]) => prev.filter((_: Process, idx: number) => idx !== i));
   }
 
   function updateRow(i: number, field: keyof Process, value: string) {
-    setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
+    setRows((prev: Process[]) =>
+      prev.map((r: Process, idx: number) => (idx === i ? { ...r, [field]: value } : r))
+    );
+  }
+
+  function focusNext(i: number, field: string) {
+    const nextRow = i + 1;
+    if (nextRow >= rows.length) return;
+    setTimeout(() => {
+      const el = document.querySelector<HTMLInputElement>(
+        `[data-row="${nextRow}"][data-field="${field}"]`
+      );
+      el?.focus();
+      el?.select();
+    }, 50);
   }
 
   return (
@@ -180,9 +265,23 @@ export default function CpuScheduling() {
           </svg>
           Back to Demos
         </Link>
-        <div className="flex items-center gap-2 font-mono text-xs text-cyan-600 dark:text-cyan-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-          SIMULATOR · LIVE
+        <div className="flex items-center gap-3">
+          <ExportButton
+            targetId="cpu-export-snapshot"
+            title="CPU Scheduling Simulation"
+            subtitle={`Algorithm: ${algorithmInfo[selected].label}`}
+          />
+          <button onClick={toggleTheme}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono
+              border border-slate-200 dark:border-white/10
+              text-slate-600 dark:text-slate-300
+              hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            {isDark ? "☀️ Light" : "🌙 Dark"}
+          </button>
+          <div className="flex items-center gap-2 font-mono text-xs text-cyan-600 dark:text-cyan-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+            SIMULATOR · LIVE
+          </div>
         </div>
       </div>
 
@@ -202,7 +301,7 @@ export default function CpuScheduling() {
       {/* Main layout */}
       <div className="mx-auto max-w-6xl px-6 pb-16 flex flex-col md:flex-row gap-6">
 
-        {/* Left panel — algorithm selector */}
+        {/* Left panel */}
         <div className="md:w-64 shrink-0">
           <div className="rounded-2xl border border-slate-200/70 dark:border-white/8
             bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-4 sticky top-20">
@@ -211,15 +310,12 @@ export default function CpuScheduling() {
             </p>
             <div className="flex flex-col gap-1">
               {(Object.keys(algorithmInfo) as Algorithm[]).map((algo) => (
-                <button
-                  key={algo}
-                  onClick={() => handleAlgoChange(algo)}
+                <button key={algo} onClick={() => handleAlgoChange(algo)}
                   className={`text-left px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
                     ${selected === algo
                       ? "bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-400/40 dark:border-cyan-500/30"
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent"
-                    }`}
-                >
+                    }`}>
                   <span className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-0.5">
                     {algo === "RoundRobin" ? "RR" : algo}
                   </span>
@@ -266,12 +362,10 @@ export default function CpuScheduling() {
               <button onClick={addRow}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono
                   bg-cyan-500/10 dark:bg-cyan-500/15 text-cyan-600 dark:text-cyan-400
-                  border border-cyan-400/30 dark:border-cyan-500/25
-                  hover:bg-cyan-500/20 transition-colors">
+                  border border-cyan-400/30 dark:border-cyan-500/25 hover:bg-cyan-500/20 transition-colors">
                 + Add Row
               </button>
             </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -288,52 +382,44 @@ export default function CpuScheduling() {
                 <tbody>
                   {rows.map((row, i) => (
                     <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
-                      {/* Process ID */}
                       <td className="py-2 px-3">
-                        <input
-                          value={row.id}
+                        <input value={row.id}
                           onChange={(e) => updateRow(i, "id", e.target.value)}
+                          data-row={i} data-field="id"
+                          onKeyDown={(e) => e.key === "Enter" && focusNext(i, "id")}
                           className="w-16 bg-transparent border border-slate-200 dark:border-white/10
                             rounded-lg px-2 py-1 text-slate-900 dark:text-white text-xs
-                            focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500"
-                        />
+                            focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500" />
                       </td>
-                      {/* Arrival Time */}
                       <td className="py-2 px-3">
-                        <input
-                          type="number" min={0}
-                          value={row.arrivalTime}
+                        <input type="number" min={0} value={row.arrivalTime}
                           onChange={(e) => updateRow(i, "arrivalTime", e.target.value)}
+                          data-row={i} data-field="arrivalTime"
+                          onKeyDown={(e) => e.key === "Enter" && focusNext(i, "arrivalTime")}
                           className="w-20 bg-transparent border border-slate-200 dark:border-white/10
                             rounded-lg px-2 py-1 text-slate-900 dark:text-white text-xs
-                            focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500"
-                        />
+                            focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500" />
                       </td>
-                      {/* Burst Time */}
                       <td className="py-2 px-3">
-                        <input
-                          type="number" min={1}
-                          value={row.burstTime}
+                        <input type="number" min={1} value={row.burstTime}
                           onChange={(e) => updateRow(i, "burstTime", e.target.value)}
+                          data-row={i} data-field="burstTime"
+                          onKeyDown={(e) => e.key === "Enter" && focusNext(i, "burstTime")}
                           className="w-20 bg-transparent border border-slate-200 dark:border-white/10
                             rounded-lg px-2 py-1 text-slate-900 dark:text-white text-xs
-                            focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500"
-                        />
+                            focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500" />
                       </td>
-                      {/* Priority */}
                       {selected === "Priority" && (
                         <td className="py-2 px-3">
-                          <input
-                            type="number" min={1}
-                            value={row.priority ?? ""}
+                          <input type="number" min={1} value={row.priority ?? ""}
                             onChange={(e) => updateRow(i, "priority", e.target.value)}
+                            data-row={i} data-field="priority"
+                            onKeyDown={(e) => e.key === "Enter" && focusNext(i, "priority")}
                             className="w-20 bg-transparent border border-slate-200 dark:border-white/10
                               rounded-lg px-2 py-1 text-slate-900 dark:text-white text-xs
-                              focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500"
-                          />
+                              focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500" />
                         </td>
                       )}
-                      {/* Delete */}
                       <td className="py-2 px-1">
                         <button onClick={() => removeRow(i)}
                           className="text-slate-300 dark:text-slate-600 hover:text-rose-400 dark:hover:text-rose-500 transition-colors">
@@ -362,51 +448,291 @@ export default function CpuScheduling() {
               </div>
             ) : (
               <>
-                {/* Blocks */}
-                <div className="flex overflow-x-auto pb-2">
-                  <div className="flex min-w-max">
-                    {gantt.map((block, i) => {
-                      const pidIdx = pidList.indexOf(block.pid);
-                      const width = Math.max((block.end - block.start) * 40, 40);
-                      return (
-                        <div key={i} className="flex flex-col items-center">
-                          <div
-                            style={{ width }}
-                            className={`${COLORS[pidIdx % COLORS.length]} h-10 flex items-center justify-center
-                              text-white text-xs font-bold border-r border-white/20 last:border-0 shrink-0`}
-                          >
-                            {block.pid}
-                          </div>
-                          <span className="text-xs font-mono text-slate-400 dark:text-slate-500 mt-1">
-                            {block.start}
-                          </span>
+                <div className="flex flex-col gap-8">
+                  {ganttRows.map((rowBlocks: GanttBlock[], rowIdx: number) => {
+                    const timeMarkers: { time: number; leftPx: number }[] = [];
+                    let cursor = 0;
+                    rowBlocks.forEach((block: GanttBlock) => {
+                      timeMarkers.push({ time: block.start, leftPx: cursor });
+                      cursor += blockWidth(block.end - block.start);
+                    });
+                    timeMarkers.push({
+                      time: rowBlocks[rowBlocks.length - 1].end,
+                      leftPx: cursor,
+                    });
+
+                    return (
+                      <div key={rowIdx}>
+                        {/* Blocks */}
+                        <div className="flex pl-3">
+                          {rowBlocks.map((block: GanttBlock, i: number) => {
+                            const pidIdx = pidList.indexOf(block.pid);
+                            return (
+                              <div
+                                key={i}
+                                style={{ width: blockWidth(block.end - block.start),backgroundColor: COLORS[pidIdx % COLORS.length], }}
+                                className={`h-10 flex items-center justify-center
+                                  ${isDark ? "text-[#c2cfdb]" : "text-[#495970]"} text-[11px] font-bold shrink-0
+                                  border-r-2 border-white/30 last:border-r-0`}
+                              >
+                                {block.pid}
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                    {/* End time */}
-                    <div className="flex flex-col items-center justify-end">
-                      <div className="h-10" />
-                      <span className="text-xs font-mono text-slate-400 dark:text-slate-500 mt-1">
-                        {totalTime}
-                      </span>
-                    </div>
-                  </div>
+
+                        {/* Time markers */}
+                        <div className="relative pl-3" style={{ height: "28px" }}>
+                          {timeMarkers.map((marker, i) => (
+                            <div
+                              key={i}
+                              style={{ left: `calc(0.75rem + ${marker.leftPx}px)` }}
+                              className="absolute top-0 flex flex-col items-center -translate-x-1/2"
+                            >
+                              <div className="w-px h-2 bg-slate-400 dark:bg-slate-500" />
+                              <span className="text-[11px] font-mono text-slate-600 dark:text-slate-300 mt-0.5 whitespace-nowrap">
+                                {marker.time}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {/* Legend */}
-                <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-white/5">
-                  {pidList.map((pid, i) => (
-                    <div key={pid} className="flex items-center gap-1.5">
-                      <div className={`w-3 h-3 rounded-sm ${COLORS[i % COLORS.length]}`} />
-                      <span className={`text-xs font-mono ${TEXT_COLORS[i % TEXT_COLORS.length]}`}>{pid}</span>
+                {/* Metrics Table*/}
+                {metrics.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
+                    <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+                      Process Metrics
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-white/8">
+                          {["Process", "Arrival", "Burst", "Completion", "Turnaround", "Waiting", "Response"].map((h) => (
+                            <th key={h} className="text-left py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                              {h}
+                            </th>
+                          ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {metrics.map((m, i) => {
+                            const pidIdx = pidList.indexOf(m!.pid);
+                            const blockColor = COLORS[pidIdx % COLORS.length];
+                            return (
+                              <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                                <td className="py-2 px-3">
+                                  <span 
+                                    className="font-mono text-xs font-bold"
+                                    style={{ color: blockColor }}>
+                                    {m!.pid}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.arrival}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.burst}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.completionTime}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.turnaroundTime}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.waitingTime}</td>
+                                <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.responseTime}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-slate-200 dark:border-white/10">
+                            <td colSpan={4} className="py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 text-right">
+                              Averages →
+                            </td>
+                            <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">
+                              {avgTAT.toFixed(2)}
+                            </td>
+                            <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">
+                              {avgWT.toFixed(2)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </>
             )}
           </div>
-
         </div>
+      </div>
+
+      {/* ── Hidden export snapshot ── */}
+      <div
+        id="cpu-export-snapshot"
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: "-9999px",
+          width: "900px",
+          zIndex: -1,
+          pointerEvents: "none",
+          overflow: "visible",
+          padding: "32px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "40px",
+          background: isDark ? "#020b18" : "#f0f6fa",
+        }}
+      >
+        {/* Export title */}
+        <div className="text-center pb-4 border-b border-slate-200 dark:border-white/10">
+          <div className="text-4xl mb-4">⚙️</div>
+          <h1 className="text-5xl font-bold text-slate-900 dark:text-white">CPU Scheduling</h1>
+        </div>
+
+        {/* Algorithm info */}
+        <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+          <h2 className="font-bold text-slate-900 dark:text-white text-lg mb-2">{info.label}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{info.description}</p>
+          {selected === "RoundRobin" && (
+            <p className="text-xs font-mono text-cyan-600 dark:text-cyan-400 mt-2">Time Quantum: {globalQuantum} ms</p>
+          )}
+        </div>
+
+        {/* Process table (read-only) */}
+        <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+          <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Process Table</p>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-white/8">
+                {info.columns.map((col) => (
+                  <th key={col} className="text-left py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider">{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                  <td className="py-2 px-3 font-mono text-xs text-slate-900 dark:text-white">{row.id}</td>
+                  <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{row.arrivalTime}</td>
+                  <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{row.burstTime}</td>
+                  {selected === "Priority" && (
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{row.priority}</td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Metrics (read-only) */}
+        {metrics.length > 0 && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Process Metrics</p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-white/8">
+                  {["Process", "Arrival", "Burst", "Completion", "Turnaround", "Waiting", "Response"].map((h) => (
+                    <th key={h} className="text-left py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {metrics.map((m, i) => (
+                  <tr key={i} className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                    <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">{m!.pid}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.arrival}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.burst}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.completionTime}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.turnaroundTime}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.waitingTime}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">{m!.responseTime}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-200 dark:border-white/10">
+                  <td colSpan={4} className="py-2 px-3 font-mono text-xs text-slate-400 dark:text-slate-500 text-right">Averages →</td>
+                  <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">{avgTAT.toFixed(2)}</td>
+                  <td className="py-2 px-3 font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400">{avgWT.toFixed(2)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        {/* Gantt Chart */}
+        {gantt.length > 0 && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
+            <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+              Gantt Chart
+            </p>
+
+            <div className="flex flex-col gap-8">
+              {ganttRows.map((rowBlocks: GanttBlock[], rowIdx: number) => {
+                const timeMarkers: { time: number; leftPx: number }[] = [];
+                let cursor = 0;
+
+                rowBlocks.forEach((block: GanttBlock) => {
+                  timeMarkers.push({
+                    time: block.start,
+                    leftPx: cursor,
+                  });
+
+                  cursor += blockWidth(block.end - block.start);
+                });
+
+                timeMarkers.push({
+                  time: rowBlocks[rowBlocks.length - 1].end,
+                  leftPx: cursor,
+                });
+
+                return (
+                  <div key={rowIdx}>
+                    <div className="flex pl-3">
+                      {rowBlocks.map((block: GanttBlock, i: number) => {
+                        const pidIdx = pidList.indexOf(block.pid);
+
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              width: blockWidth(block.end - block.start),
+                              backgroundColor: COLORS[pidIdx % COLORS.length],
+                            }}
+                            className="h-10 flex items-center justify-center text-[11px]
+                            font-bold shrink-0 border-r-2 border-white/30"
+                          >
+                            {block.pid}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div
+                      className="relative pl-3"
+                      style={{ height: "28px" }}
+                    >
+                      {timeMarkers.map((marker, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            left: `calc(0.75rem + ${marker.leftPx}px)`,
+                          }}
+                          className="absolute top-0 flex flex-col items-center -translate-x-1/2"
+                        >
+                          <div className="w-px h-2 bg-slate-400" />
+                          <span className="text-[11px] font-mono mt-0.5 whitespace-nowrap">
+                            {marker.time}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
