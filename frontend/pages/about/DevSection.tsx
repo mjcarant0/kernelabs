@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTheme } from "next-themes";
 import DevCard from "../../ui/cards/DevCards";
 import ScrollReveal from "../../ui/animations/ScrollReveal";
 
@@ -22,7 +23,7 @@ const devs = [
     accent: "blue" as const,
     image: "/images/dev-wyne.jpg",
     github: "https://github.com/wynepew",
-    linkedin: "#",
+    linkedin: "https://www.linkedin.com/in/cartalla-julian-0ba578417/",
     facebook: "https://www.facebook.com/wyne.cartalla",
   },
   {
@@ -38,7 +39,7 @@ const devs = [
   {
     name: "Xyrene Jade R. Torralba",
     role: "Backend Developer",
-    intro: "Built the PDF export feature and contributed to the computation logic powering the Demo page simulations.",
+    intro: "Built the PDF export system and backend computation logic — enabling document generation and powering Demo simulations.",
     accent: "emerald" as const,
     image: "/images/dev-xyrene.jpg",
     github: "https://github.com/xytorralba",
@@ -48,6 +49,16 @@ const devs = [
 ];
 
 export default function DevSection() {
+  const { resolvedTheme } = useTheme();
+  const imageTheme = resolvedTheme === "dark" ? "dark" : "light";
+
+  const getImagePath = (path: string) => {
+    const match = path.match(/\/images\/dev-(.+)\.jpg$/);
+    if (!match) return path;
+    const name = match[1];
+    return `/images/dev/${imageTheme}_mode/dev-${name}-${imageTheme}.jpg`;
+  };
+
   return (
     <section id="about" className="relative overflow-hidden py-24 px-6
       bg-gradient-to-b from-[#eef4f8] via-[#f0f4f8] to-[#eef4f8]
@@ -93,7 +104,7 @@ export default function DevSection() {
           {devs.map((dev, index) => (
             <ScrollReveal key={dev.name} delay={index * 0.1 + 0.1}>
               <DevCard
-                image={dev.image}
+                image={getImagePath(dev.image)}
                 name={dev.name}
                 role={dev.role}
                 intro={dev.intro}
