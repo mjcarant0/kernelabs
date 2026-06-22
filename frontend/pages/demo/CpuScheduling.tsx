@@ -52,7 +52,7 @@ function defaultRow(algo: Algorithm, index: number): Process {
   };
 }
 
-function computeGantt(algo: Algorithm, processes: Process[], globalQuantum: number): GanttBlock[] {
+function computeGantt( algo: Algorithm, processes: Process[], globalQuantum: number, isPreemptive: boolean): GanttBlock[] {
   const valid = processes.filter(
     (p) => p.id && p.arrivalTime !== "" && p.burstTime !== "" && Number(p.burstTime) > 0
   );
@@ -77,40 +77,90 @@ function computeGantt(algo: Algorithm, processes: Process[], globalQuantum: numb
       time = start + p.burst;
     }
   } else if (algo === "SJF") {
-    const sorted = [...procs].sort((a, b) => a.arrival - b.arrival);
-    let time = 0;
-    const done = new Set<string>();
-    while (done.size < sorted.length) {
-      const available = sorted.filter((p) => p.arrival <= time && !done.has(p.pid));
-      if (available.length === 0) { time++; continue; }
-      const next = available.sort((a, b) => a.burst - b.burst)[0];
-      gantt.push({ pid: next.pid, start: time, end: time + next.burst });
-      time += next.burst;
-      done.add(next.pid);
+    if (!isPreemptive) {
+      // Non-preemptive SJF
+      const sorted = [...procs].sort((a, b) => a.arrival - b.arrival);
+      let time = 0;
+      const done = new Set<string>();
+      while (done.size < sorted.length) {
+        const available = sorted.filter((p) => p.arrival <= time && !done.has(p.pid));
+        if (available.length === 0) { time++; continue; }
+        const next = available.sort((a, b) => a.burst - b.burst)[0];
+        gantt.push({ pid: next.pid, start: time, end: time + next.burst });
+        time += next.burst;
+        done.add(next.pid);
+      }
+    } else {
+      // Preemptive SJF (SRTF — Shortest Remaining Time First)
+      const remaining = procs.map((p) => ({ ...p }));
+      const done = new Set<string>();
+      let time = 0;
+      const maxTime = remaining.reduce((s, p) => s + p.burst, 0) +
+        Math.max(...remaining.map((p) => p.arrival));
+
+      while (done.size < remaining.length && time <= maxTime) {
+        const available = remaining.filter((p) => p.arrival <= time && !done.has(p.pid));
+        if (available.length === 0) { time++; continue; }
+        const next = available.sort((a, b) => a.remaining - b.remaining)[0];
+        // Run for 1 unit
+        const last = gantt[gantt.length - 1];
+        if (last && last.pid === next.pid && last.end === time) {
+          last.end = time + 1;
+        } else {
+          gantt.push({ pid: next.pid, start: time, end: time + 1 });
+        }
+        next.remaining -= 1;
+        time += 1;
+        if (next.remaining === 0) done.add(next.pid);
+      }
     }
   } else if (algo === "Priority") {
-    const sorted = [...procs].sort((a, b) => a.arrival - b.arrival);
-    let time = 0;
-    const done = new Set<string>();
-    while (done.size < sorted.length) {
-      const available = sorted.filter((p) => p.arrival <= time && !done.has(p.pid));
-      if (available.length === 0) { time++; continue; }
-      const next = available.sort((a, b) => a.priority - b.priority)[0];
-      gantt.push({ pid: next.pid, start: time, end: time + next.burst });
-      time += next.burst;
-      done.add(next.pid);
+    if (!isPreemptive) {
+      // Non-preemptive Priority
+      const sorted = [...procs].sort((a, b) => a.arrival - b.arrival);
+      let time = 0;
+      const done = new Set<string>();
+      while (done.size < sorted.length) {
+        const available = sorted.filter((p) => p.arrival <= time && !done.has(p.pid));
+        if (available.length === 0) { time++; continue; }
+        const next = available.sort((a, b) => a.priority - b.priority)[0];
+        gantt.push({ pid: next.pid, start: time, end: time + next.burst });
+        time += next.burst;
+        done.add(next.pid);
+      }
+    } else {
+      // Preemptive Priority
+      const remaining = procs.map((p) => ({ ...p }));
+      const done = new Set<string>();
+      let time = 0;
+      const maxTime = remaining.reduce((s, p) => s + p.burst, 0) +
+        Math.max(...remaining.map((p) => p.arrival));
+
+      while (done.size < remaining.length && time <= maxTime) {
+        const available = remaining.filter((p) => p.arrival <= time && !done.has(p.pid));
+        if (available.length === 0) { time++; continue; }
+        const next = available.sort((a, b) => a.priority - b.priority)[0];
+        // Run for 1 unit
+        const last = gantt[gantt.length - 1];
+        if (last && last.pid === next.pid && last.end === time) {
+          last.end = time + 1;
+        } else {
+          gantt.push({ pid: next.pid, start: time, end: time + 1 });
+        }
+        next.remaining -= 1;
+        time += 1;
+        if (next.remaining === 0) done.add(next.pid);
+      }
     }
   } else if (algo === "RoundRobin") {
     const q = globalQuantum;
     const queue = [...procs].sort((a, b) => a.arrival - b.arrival).map((p) => ({ ...p }));
     let time = 0;
     const readyQueue: typeof queue = [];
-    const arrived = new Set<string>();
     let idx = 0;
     while (readyQueue.length > 0 || idx < queue.length) {
       while (idx < queue.length && queue[idx].arrival <= time) {
         readyQueue.push(queue[idx]);
-        arrived.add(queue[idx].pid);
         idx++;
       }
       if (readyQueue.length === 0) { time = queue[idx]?.arrival ?? time + 1; continue; }
@@ -158,6 +208,7 @@ function computeMetrics(processes: Process[], gantt: GanttBlock[]) {
       responseTime,
     };
   }).filter(Boolean)
+  ;
 }
 
 function chunkGantt(gantt: GanttBlock[], maxPerRow: number): GanttBlock[][] {
@@ -187,6 +238,7 @@ function blockWidth(burstTime: number): number {
 
 export default function CpuScheduling() {
   const [selected, setSelected] = useState<Algorithm>("FCFS");
+  const [isPreemptive, setIsPreemptive] = useState<boolean>(false);
   const [rows, setRows] = useState<Process[]>([
     defaultRow("FCFS", 0),
     defaultRow("FCFS", 1),
@@ -212,17 +264,25 @@ export default function CpuScheduling() {
     }
   }
 
+  const supportsPreemptive = selected === "SJF" || selected === "Priority";
+
   const info = algorithmInfo[selected];
-  const gantt = computeGantt(selected, rows, Number(globalQuantum) || 1);
+  const gantt = computeGantt(selected, rows, Number(globalQuantum) || 1, isPreemptive);
   const pidList = [...new Set(gantt.map((b) => b.pid))];
   const ganttRows = chunkGantt(gantt, BLOCKS_PER_ROW);
   const metrics = computeMetrics(rows, gantt);
   const avgTAT = metrics.length ? metrics.reduce((s,m) => s + m!.turnaroundTime, 0) / metrics.length : 0;
   const avgWT = metrics.length ? metrics.reduce((s, m) => s + m!.waitingTime, 0) / metrics.length : 0;
 
+  // Derived label for display
+  const algoDisplayLabel = supportsPreemptive
+    ? `${info.label} (${isPreemptive ? "Preemptive" : "Non-Preemptive"})`
+    : info.label;
+
   function handleAlgoChange(algo: Algorithm) {
     setSelected(algo);
-    setRows([defaultRow(algo, 0), defaultRow(algo, 1), defaultRow(algo, 2)]);
+    setIsPreemptive(false);
+    setRows((prev) => prev.map((row) => ({...row, priority: algo === "Priority" ? row.priority ?? 1 : undefined,})));
   }
 
   function addRow() {
@@ -270,7 +330,7 @@ export default function CpuScheduling() {
           <ExportButton
             targetId="cpu-export-snapshot"
             title="CPU Scheduling Simulation"
-            subtitle={`Algorithm: ${algorithmInfo[selected].label}`}
+            subtitle={`Algorithm: ${algoDisplayLabel}`}
           />
           <ThemeToggleSwitch isDark={isDark} onToggle={toggleTheme} />
           <div className="flex items-center gap-2 font-mono text-xs text-cyan-600 dark:text-cyan-400">
@@ -329,6 +389,41 @@ export default function CpuScheduling() {
             bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
             <h2 className="font-bold text-slate-900 dark:text-white text-lg mb-1">{info.label}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">{info.description}</p>
+
+            {/* Preemptive toggle for SJF and Priority */}
+            {supportsPreemptive && (
+              <div className="mt-4 flex items-center gap-3">
+                <span className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  Mode
+                </span>
+                <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-white/10">
+                  <button
+                    onClick={() => setIsPreemptive(false)}
+                    className={`px-3 py-1.5 text-xs font-mono transition-colors
+                      ${!isPreemptive
+                        ? "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-r border-cyan-400/30"
+                        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border-r border-slate-200 dark:border-white/10"
+                      }`}
+                  >
+                    Non-Preemptive
+                  </button>
+                  <button
+                    onClick={() => setIsPreemptive(true)}
+                    className={`px-3 py-1.5 text-xs font-mono transition-colors
+                      ${isPreemptive
+                        ? "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300"
+                        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
+                      }`}
+                  >
+                    Preemptive
+                  </button>
+                </div>
+                {isPreemptive && selected === "SJF" && (
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-mono"></span>
+                )}
+              </div>
+            )}
+
             {selected === "RoundRobin" && (
               <div className="mt-4 flex items-center gap-3">
                 <label className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -498,7 +593,7 @@ export default function CpuScheduling() {
 
                 {/* Metrics Table*/}
                 {metrics.length > 0 && (
-                  <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
+                  <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5 mt-6">
                     <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
                       Process Metrics
                     </p>
@@ -574,7 +669,7 @@ export default function CpuScheduling() {
           padding: "32px",
           display: "flex",
           flexDirection: "column",
-          gap: "40px",
+          gap: "10px",
           background: isDark ? "#020b18" : "#f0f6fa",
         }}
       >
@@ -586,7 +681,7 @@ export default function CpuScheduling() {
 
         {/* Algorithm info */}
         <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-5">
-          <h2 className="font-bold text-slate-900 dark:text-white text-lg mb-2">{info.label}</h2>
+          <h2 className="font-bold text-slate-900 dark:text-white text-lg mb-2">{algoDisplayLabel}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">{info.description}</p>
           {selected === "RoundRobin" && (
             <p className="text-xs font-mono text-cyan-600 dark:text-cyan-400 mt-2">Time Quantum: {globalQuantum} ms</p>

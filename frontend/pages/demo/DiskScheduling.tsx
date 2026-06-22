@@ -7,6 +7,7 @@ import ThemeToggleSwitch from "../../ui/buttons/ThemeToggleSwitch";
 
 type Algorithm = "FCFS" | "SSTF" | "SCAN" | "CSCAN" | "LOOK" | "CLOOK";
 type Direction = "left" | "right";
+type SeekStep = { value: number | "?"; broken?: boolean; unknownGap?: boolean };
 
 const algorithmInfo: Record<Algorithm, { label: string; description: string; needsDirection: boolean }> = {
   FCFS: { label: "FCFS (First Come First Serve)", description: "The disk arm services requests in the exact order they arrive in the queue, regardless of their position on the disk.", needsDirection: false },
@@ -17,19 +18,39 @@ const algorithmInfo: Record<Algorithm, { label: string; description: string; nee
   CLOOK: { label: "C-LOOK (Circular LOOK)", description: "Similar to C-SCAN, but the arm jumps back to the lowest (or highest) pending request instead of the actual end of the disk.", needsDirection: true },
 };
 
-function totalMovement(seq: number[]): number {
+function totalMovement(seq: SeekStep[]): { total: number; hasUnknown: boolean } {
   let total = 0;
-  for (let i = 0; i < seq.length - 1; i++) total += Math.abs(seq[i + 1] - seq[i]);
-  return total;
+  let hasUnknown = false;
+  for (let i = 0; i < seq.length - 1; i++) {
+    const a = seq[i].value;
+    const b = seq[i + 1].value;
+    if (a === "?" || b === "?") {
+      hasUnknown = true;
+      continue;
+    }
+    if (seq[i + 1].unknownGap) {
+      // C-SCAN wrap with an unknown disk size: the real path goes
+      // a -> (unknown disk edge) -> 0 -> b. Whatever the edge's true position,
+      // the detour can never cost less than a + b (that minimum is reached when
+      // the edge sits exactly at whichever of a/b is farther out), so that sum
+      // is the guaranteed lower bound for this hop. The actual total could be
+      // higher, hence hasUnknown stays true and the UI shows a "+".
+      total += Math.abs(a) + Math.abs(b);
+      hasUnknown = true;
+      continue;
+    }
+    total += Math.abs(b - a);
+  }
+  return { total, hasUnknown };
 }
 
-function runFCFS(requests: number[], head: number) {
-  return [head, ...requests];
+function runFCFS(requests: number[], head: number): SeekStep[] {
+  return [{ value: head }, ...requests.map((v) => ({ value: v }))];
 }
 
-function runSSTF(requests: number[], head: number) {
+function runSSTF(requests: number[], head: number): SeekStep[] {
   const remaining = [...requests];
-  const seq = [head];
+  const seq: SeekStep[] = [{ value: head }];
   let current = head;
   while (remaining.length > 0) {
     let closestIdx = 0, closestDist = Math.abs(remaining[0] - current);
@@ -38,59 +59,94 @@ function runSSTF(requests: number[], head: number) {
       if (dist < closestDist) { closestDist = dist; closestIdx = i; }
     }
     current = remaining[closestIdx];
-    seq.push(current);
+    seq.push({ value: current });
     remaining.splice(closestIdx, 1);
   }
   return seq;
 }
 
-function runSCAN(requests: number[], head: number, diskSize: number, direction: Direction) {
+function runSCAN(requests: number[], head: number, diskSize: number | null, direction: Direction): SeekStep[] {
+  const sorted = [...requests].sort((a, b) => a - b);
+  const less = sorted.filter((r) => r < head);
+  const greater = sorted.filter((r) => r >= head);
+  const lowEnd: SeekStep = { value: 0 };
+  const highEnd: SeekStep = { value: diskSize === null ? "?" : diskSize - 1 };
+
+  if (direction === "left") {
+    return [{ value: head }, ...less.reverse().map((v) => ({ value: v })), lowEnd, ...greater.map((v) => ({ value: v }))];
+  }
+  return [{ value: head }, ...greater.map((v) => ({ value: v })), highEnd, ...less.reverse().map((v) => ({ value: v }))];
+}
+
+function runLOOK(requests: number[], head: number, direction: Direction): SeekStep[] {
   const sorted = [...requests].sort((a, b) => a - b);
   const less = sorted.filter((r) => r < head);
   const greater = sorted.filter((r) => r >= head);
   if (direction === "left") {
-    return [head, ...[...less].reverse(), 0, ...greater];
+    return [{ value: head }, ...less.reverse().map((v) => ({ value: v })), ...greater.map((v) => ({ value: v }))];
   }
-  return [head, ...greater, diskSize - 1, ...[...less].reverse()];
+  return [{ value: head }, ...greater.map((v) => ({ value: v })), ...less.reverse().map((v) => ({ value: v }))];
 }
 
-function runLOOK(requests: number[], head: number, direction: Direction) {
+function runCSCAN(requests: number[], head: number, diskSize: number | null, direction: Direction): SeekStep[] {
   const sorted = [...requests].sort((a, b) => a - b);
   const less = sorted.filter((r) => r < head);
   const greater = sorted.filter((r) => r >= head);
+
   if (direction === "left") {
-    return [head, ...[...less].reverse(), ...greater];
+    const seq: SeekStep[] = [{ value: head }, ...less.reverse().map((v) => ({ value: v }))];
+    if (diskSize === null) {
+      if (greater.length > 0) {
+        const rev = [...greater].reverse();
+        seq.push({ value: rev[0], broken: true, unknownGap: true });
+        seq.push(...rev.slice(1).map((v) => ({ value: v })));
+      }
+    } else {
+      seq.push({ value: 0 });
+      seq.push({ value: diskSize - 1, broken: true });
+      seq.push(...[...greater].reverse().map((v) => ({ value: v })));
+    }
+    return seq;
   }
-  return [head, ...greater, ...[...less].reverse()];
+
+  const seq: SeekStep[] = [{ value: head }, ...greater.map((v) => ({ value: v }))];
+  if (diskSize === null) {
+    if (less.length > 0) {
+      seq.push({ value: less[0], broken: true, unknownGap: true });
+      seq.push(...less.slice(1).map((v) => ({ value: v })));
+    }
+  } else {
+    seq.push({ value: diskSize - 1 });
+    seq.push({ value: 0, broken: true });
+    seq.push(...less.map((v) => ({ value: v })));
+  }
+  return seq;
 }
 
-function runCSCAN(requests: number[], head: number, diskSize: number, direction: Direction) {
+function runCLOOK(requests: number[], head: number, direction: Direction): SeekStep[] {
   const sorted = [...requests].sort((a, b) => a - b);
   const less = sorted.filter((r) => r < head);
   const greater = sorted.filter((r) => r >= head);
+
   if (direction === "left") {
-    return [head, ...[...less].reverse(), 0, diskSize - 1, ...[...greater].reverse()];
+    if (less.length === 0) return [{ value: head }, ...[...greater].reverse().map((v) => ({ value: v }))];
+    if (greater.length === 0) return [{ value: head }, ...[...less].reverse().map((v) => ({ value: v }))];
+    const lessSeq = [...less].reverse().map((v) => ({ value: v }));
+    const greaterSeq = [...greater].reverse().map((v, i) => ({ value: v, broken: i === 0 }));
+    return [{ value: head }, ...lessSeq, ...greaterSeq];
   }
-  return [head, ...greater, diskSize - 1, 0, ...less];
+
+  if (greater.length === 0) return [{ value: head }, ...less.map((v) => ({ value: v }))];
+  if (less.length === 0) return [{ value: head }, ...greater.map((v) => ({ value: v }))];
+  const greaterSeq = greater.map((v) => ({ value: v }));
+  const lessSeq = less.map((v, i) => ({ value: v, broken: i === 0 }));
+  return [{ value: head }, ...greaterSeq, ...lessSeq];
 }
 
-function runCLOOK(requests: number[], head: number, direction: Direction) {
-  const sorted = [...requests].sort((a, b) => a - b);
-  const less = sorted.filter((r) => r < head);
-  const greater = sorted.filter((r) => r >= head);
-  if (direction === "left") {
-    if (less.length === 0) return [head, ...[...greater].reverse()];
-    if (greater.length === 0) return [head, ...[...less].reverse()];
-    return [head, ...[...less].reverse(), ...[...greater].reverse()];
-  }
-  if (greater.length === 0) return [head, ...less];
-  if (less.length === 0) return [head, ...greater];
-  return [head, ...greater, ...less];
-}
-
-function computeSequence(algo: Algorithm, requests: number[], head: number, diskSize: number, direction: Direction): number[] {
-  const valid = requests.filter((r) => !isNaN(r) && r >= 0 && r <= diskSize - 1);
-  if (valid.length === 0) return [head];
+function computeSequence(algo: Algorithm, requests: number[], head: number, diskSize: number | null, direction: Direction): SeekStep[] {
+  const maxForFilter = diskSize === null ? Infinity : diskSize - 1;
+  const valid = requests.filter((r) => !isNaN(r) && r >= 0 && r <= maxForFilter);
+  if (valid.length === 0) return [{ value: head }];
   switch (algo) {
     case "FCFS": return runFCFS(valid, head);
     case "SSTF": return runSSTF(valid, head);
@@ -109,7 +165,7 @@ export default function DiskScheduling() {
   const [selected, setSelected] = useState<Algorithm>("FCFS");
   const [requestStr, setRequestStr] = useState("");
   const [head, setHead] = useState("");
-  const [maxCylinder, setMaxCylinder] = useState("");
+  const [maxValue, setMaxValue] = useState("");
   const [direction, setDirection] = useState<Direction>("right");
   const [isDark, setIsDark] = useState(true);
 
@@ -123,12 +179,22 @@ export default function DiskScheduling() {
 
   const requests = requestStr.trim().split(/[\s,]+/).filter(Boolean).map(Number).filter((n) => !isNaN(n));
   const headNum = Number(head) || 0;
-  const diskSizeNum = Math.max(2, (Number(maxCylinder) || 199) + 1);
+  const maxValueTrimmed = maxValue.trim();
+  const isUnknownMax = maxValueTrimmed === "?";
+  const maxValueNum = Number(maxValueTrimmed);
+  const hasValidMaxInput = isUnknownMax || (maxValueTrimmed !== "" && !isNaN(maxValueNum) && maxValueNum >= 1);
+  const diskSizeNum: number | null = isUnknownMax ? null : (hasValidMaxInput ? Math.max(2, maxValueNum + 1) : null);
   const info = algorithmInfo[selected];
 
-  const sequence = computeSequence(selected, requests, headNum, diskSizeNum, direction);
-  const total = totalMovement(sequence);
-  const hasInput = requests.length > 0 && head !== "" && maxCylinder !== "";
+  const sequence = hasValidMaxInput
+    ? computeSequence(selected, requests, headNum, diskSizeNum, direction)
+    : [{ value: headNum } as SeekStep];
+
+  const { total, hasUnknown } = totalMovement(sequence);
+  const hasInput = requests.length > 0 && head !== "" && hasValidMaxInput;
+  const knownValues = sequence.map((s) => s.value).filter((v): v is number => v !== "?");
+  const fallbackMax = knownValues.length > 0 ? Math.max(...knownValues, headNum) : headNum;
+  const axisMax = diskSizeNum !== null ? diskSizeNum - 1 : Math.max(fallbackMax, 1);
 
   const chartWidth = 760;
   const chartHeight = sequence.length * 46 + 80;
@@ -136,10 +202,10 @@ export default function DiskScheduling() {
   const usableWidth = chartWidth - marginX * 2;
 
   function xPos(cyl: number) {
-    return marginX + (cyl / (diskSizeNum - 1)) * usableWidth;
+    return marginX + (cyl / (axisMax || 1)) * usableWidth;
   }
 
-  const tickValues = [...new Set([0, diskSizeNum - 1, headNum, ...requests])].sort((a, b) => a - b);
+  const tickValues = [...new Set([0, axisMax, headNum, ...requests, ...knownValues])].sort((a, b) => a - b);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eef4f8] via-[#f0f6fa] to-[#eef4f8] dark:from-[#030d1f] dark:via-[#020b18] dark:to-[#030d1f]">
@@ -206,7 +272,7 @@ export default function DiskScheduling() {
             <div className="flex flex-col gap-4">
               <div>
                 <label className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
-                  Request Queue (cylinder numbers, space or comma separated)
+                  Request Queue (numbers, space or comma separated)
                 </label>
                 <input value={requestStr} onChange={(e) => setRequestStr(e.target.value)}
                   placeholder="e.g. 98 183 37 122 14 124 65 67"
@@ -220,9 +286,11 @@ export default function DiskScheduling() {
                     className="w-full bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
                 </div>
                 <div className="md:w-48">
-                  <label className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Max Cylinder Value</label>
-                  <input type="number" min={1} value={maxCylinder} onChange={(e) => setMaxCylinder(e.target.value)}
-                    placeholder="e.g. 199"
+                  <label className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
+                    Max Value <span className="text-slate-400 dark:text-slate-500">(&quot;?&quot; if unknown)</span>
+                  </label>
+                  <input type="text" value={maxValue} onChange={(e) => setMaxValue(e.target.value)}
+                    placeholder="e.g. 199 or ?"
                     className="w-full bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
                 </div>
                 {info.needsDirection && (
@@ -244,8 +312,10 @@ export default function DiskScheduling() {
             </div>
             {hasInput ? (
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex flex-wrap gap-4 text-xs font-mono">
-                <span className="text-cyan-600 dark:text-cyan-400">Total Head Movement: <span className="font-bold">{total}</span> cylinders</span>
-                <span className="text-slate-400">Requests Serviced: {sequence.length - 1}</span>
+                <span className="text-cyan-600 dark:text-cyan-400">
+                  Total Head Movement: <span className="font-bold">{total}{hasUnknown ? "+" : ""}</span> tracks
+                </span>
+                <span className="text-slate-400">Requests Serviced: {requests.length}</span>
               </div>
             ) : (
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 text-xs font-mono text-slate-400 dark:text-slate-600">
@@ -260,17 +330,22 @@ export default function DiskScheduling() {
             {hasInput ? (
               <>
                 <div className="flex flex-wrap items-center gap-1">
-                  {sequence.map((cyl, i) => (
+                  {sequence.map((step, i) => (
                     <span key={i} className="flex items-center gap-1">
                       <span className={`px-3 py-1 rounded-full text-xs font-mono font-bold border ${i === 0 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-400/30" : "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-400/30"}`}>
-                        {cyl}
+                        {step.value}
                       </span>
-                      {i < sequence.length - 1 && <span className="text-slate-400 text-xs">→</span>}
+                      {i < sequence.length - 1 && (
+                        <span className={`text-xs ${sequence[i + 1].broken ? "text-amber-500" : "text-slate-400"}`}>
+                          {sequence[i + 1].broken ? "⇢" : "→"}
+                        </span>
+                      )}
                     </span>
                   ))}
                 </div>
                 <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-2">
                   <span className="text-amber-500">●</span> Starting head position &nbsp;&nbsp; <span className="text-cyan-500">●</span> Serviced requests in order
+                  {hasUnknown && <>&nbsp;&nbsp;<span className="text-amber-500">⇢</span> Wrap-around (distance unknown)</>}
                 </p>
               </>
             ) : (
@@ -299,30 +374,43 @@ export default function DiskScheduling() {
                           fill={isDark ? "#cbd5e1" : "#475569"}>{val}</text>
                       </g>
                     ))}
-                    {/* Arrowhead marker */}
+                    {/* Arrowhead markers */}
                     <defs>
                       <marker id="arrowhead" markerWidth="7" markerHeight="7" refX="2" refY="2.5" orient="auto">
                         <path d="M0,0 L5,2.5 L0,5 Z" fill={POINT_COLOR} />
                       </marker>
+                      <marker id="arrowhead-broken" markerWidth="7" markerHeight="7" refX="2" refY="2.5" orient="auto">
+                        <path d="M0,0 L5,2.5 L0,5 Z" fill={isDark ? "#fbbf24" : "#d97706"} />
+                      </marker>
                     </defs>
                     {/* Seek lines — tip stops just at dot edge */}
-                    {sequence.map((cyl, i) => {
+                    {sequence.map((step, i) => {
                       if (i === sequence.length - 1) return null;
-                      const x1 = xPos(cyl), y1 = 20 + i * 46 + 40;
-                      const x2 = xPos(sequence[i + 1]), y2 = 20 + (i + 1) * 46 + 40;
+                      const next = sequence[i + 1];
+                      if (step.value === "?" || next.value === "?") return null;
+                      const x1 = xPos(step.value), y1 = 20 + i * 46 + 40;
+                      const x2 = xPos(next.value), y2 = 20 + (i + 1) * 46 + 40;
                       const dotR = 3, arrowLen = 5;
                       const dx = x2 - x1, dy = y2 - y1;
-                      const len = Math.sqrt(dx * dx + dy * dy);
+                      const len = Math.sqrt(dx * dx + dy * dy) || 1;
                       const ux = dx / len, uy = dy / len;
                       const ex = x2 - ux * (dotR + arrowLen);
                       const ey = y2 - uy * (dotR + arrowLen);
-                      return <line key={i} x1={x1} y1={y1} x2={ex} y2={ey} stroke={POINT_COLOR} strokeWidth={1.5} markerEnd="url(#arrowhead)" />;
+                      const isBroken = !!next.broken;
+                      const strokeColor = isBroken ? (isDark ? "#fbbf24" : "#d97706") : POINT_COLOR;
+                      return (
+                        <line key={i} x1={x1} y1={y1} x2={ex} y2={ey} stroke={strokeColor} strokeWidth={1.5}
+                          strokeDasharray={isBroken ? "6 5" : undefined}
+                          markerEnd={isBroken ? "url(#arrowhead-broken)" : "url(#arrowhead)"} />
+                      );
                     })}
                     {/* Points and labels — label offset away from incoming line */}
-                    {sequence.map((cyl, i) => {
-                      const x = xPos(cyl), y = 20 + i * 46 + 40;
-                      const prevX = i > 0 ? xPos(sequence[i - 1]) : null;
-                      const prevY = i > 0 ? (20 + (i - 1) * 46 + 40) : null;
+                    {sequence.map((step, i) => {
+                      if (step.value === "?") return null;
+                      const x = xPos(step.value), y = 20 + i * 46 + 40;
+                      const prevStep = i > 0 ? sequence[i - 1] : null;
+                      const prevX = prevStep && prevStep.value !== "?" ? xPos(prevStep.value) : null;
+                      const prevY = prevStep ? (20 + (i - 1) * 46 + 40) : null;
                       let labelX = x + 14;
                       let labelY = y - 8;
                       let anchor: "start" | "end" | "middle" = "start";
@@ -338,15 +426,12 @@ export default function DiskScheduling() {
                         <g key={i}>
                           <circle cx={x} cy={y} r={4} fill={i === 0 ? "#f59e0b" : POINT_COLOR} />
                           <text x={labelX} y={labelY} textAnchor={anchor} fontSize="11" fontWeight="bold" fontFamily="monospace"
-                            fill={isDark ? "#e2e8f0" : "#1e293b"}>{cyl}</text>
+                            fill={isDark ? "#e2e8f0" : "#1e293b"}>{step.value}</text>
                         </g>
                       );
                     })}
                   </svg>
                 </div>
-                <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-2">
-                  Horizontal axis = cylinder position (0 – {diskSizeNum - 1}). Each row down represents the next step in the seek sequence.
-                </p>
               </>
             ) : (
               <div className="flex items-center justify-center h-20 text-slate-400 dark:text-slate-600 text-sm font-mono">
@@ -395,11 +480,11 @@ export default function DiskScheduling() {
             <div className="flex flex-col gap-2 font-mono text-sm">
               <span className="text-slate-600 dark:text-slate-300">Request Queue: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{requests.join(", ")}</span></span>
               <span className="text-slate-600 dark:text-slate-300">Initial Head: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{headNum}</span></span>
-              <span className="text-slate-600 dark:text-slate-300">Max Cylinder: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{diskSizeNum - 1}</span></span>
+              <span className="text-slate-600 dark:text-slate-300">Max Value: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{diskSizeNum !== null ? diskSizeNum - 1 : "?"}</span></span>
               {info.needsDirection && (
                 <span className="text-slate-600 dark:text-slate-300">Direction: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{direction === "left" ? "← Toward 0" : "Toward Max →"}</span></span>
               )}
-              <span className="text-cyan-600 dark:text-cyan-400 font-bold mt-1">Total Head Movement: {total} cylinders</span>
+              <span className="text-cyan-600 dark:text-cyan-400 font-bold mt-1">Total Head Movement: {total}{hasUnknown ? "+" : ""} tracks</span>
             </div>
           </div>
         )}
@@ -409,12 +494,13 @@ export default function DiskScheduling() {
           <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 p-4">
             <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Seek Sequence</p>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px" }}>
-              {sequence.map((cyl, i) => {
-                const label = String(cyl);
+              {sequence.map((step, i) => {
+                const label = String(step.value);
                 const pillWidth = Math.max(48, label.length * 11 + 28);
                 const pillHeight = 28;
                 const isLast = i === sequence.length - 1;
                 const svgWidth = isLast ? pillWidth : pillWidth + 20;
+                const nextBroken = !isLast && !!sequence[i + 1].broken;
                 return (
                   <span key={i} style={{ display: "flex", alignItems: "center" }}>
                     <svg width={svgWidth} height={pillHeight} style={{ display: "block" }}>
@@ -431,7 +517,7 @@ export default function DiskScheduling() {
                       />
                       <text
                         x={pillWidth / 2}
-                        y={18} /* <-- ADJUST THIS Y VALUE TO MOVE PILL TEXT UP/DOWN */
+                        y={18}
                         textAnchor="middle"
                         fontSize="12"
                         fontFamily="monospace"
@@ -443,13 +529,13 @@ export default function DiskScheduling() {
                       {!isLast && (
                         <text
                           x={pillWidth + 10}
-                          y={18} /* <-- ADJUST THIS Y VALUE TO MOVE ARROW UP/DOWN */
+                          y={18}
                           textAnchor="middle"
                           fontSize="12"
                           fontFamily="monospace"
-                          fill="#94a3b8"
+                          fill={nextBroken ? (isDark ? "#fbbf24" : "#d97706") : "#94a3b8"}
                         >
-                          →
+                          {nextBroken ? "⇢" : "→"}
                         </text>
                       )}
                     </svg>
@@ -459,6 +545,7 @@ export default function DiskScheduling() {
             </div>
             <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-2">
               <span style={{ color: "#f59e0b" }}>●</span> Starting head position &nbsp;&nbsp; <span style={{ color: POINT_COLOR }}>●</span> Serviced requests in order
+              {hasUnknown && <>&nbsp;&nbsp;<span style={{ color: "#f59e0b" }}>⇢</span> Wrap-around (distance unknown)</>}
             </p>
           </div>
         )}
@@ -480,30 +567,43 @@ export default function DiskScheduling() {
                     fill={isDark ? "#cbd5e1" : "#475569"}>{val}</text>
                 </g>
               ))}
-              {/* Arrowhead marker — unique id to avoid conflict with main chart */}
+              {/* Arrowhead markers — unique ids to avoid conflict with main chart */}
               <defs>
                 <marker id="export-arrowhead" markerWidth="7" markerHeight="7" refX="2" refY="2.5" orient="auto">
                   <path d="M0,0 L5,2.5 L0,5 Z" fill={POINT_COLOR} />
                 </marker>
+                <marker id="export-arrowhead-broken" markerWidth="7" markerHeight="7" refX="2" refY="2.5" orient="auto">
+                  <path d="M0,0 L5,2.5 L0,5 Z" fill={isDark ? "#fbbf24" : "#d97706"} />
+                </marker>
               </defs>
               {/* Seek lines */}
-              {sequence.map((cyl, i) => {
+              {sequence.map((step, i) => {
                 if (i === sequence.length - 1) return null;
-                const x1 = xPos(cyl), y1 = 20 + i * 46 + 40;
-                const x2 = xPos(sequence[i + 1]), y2 = 20 + (i + 1) * 46 + 40;
+                const next = sequence[i + 1];
+                if (step.value === "?" || next.value === "?") return null;
+                const x1 = xPos(step.value), y1 = 20 + i * 46 + 40;
+                const x2 = xPos(next.value), y2 = 20 + (i + 1) * 46 + 40;
                 const dotR = 3, arrowLen = 5;
                 const dx = x2 - x1, dy = y2 - y1;
-                const len = Math.sqrt(dx * dx + dy * dy);
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
                 const ux = dx / len, uy = dy / len;
                 const ex = x2 - ux * (dotR + arrowLen);
                 const ey = y2 - uy * (dotR + arrowLen);
-                return <line key={i} x1={x1} y1={y1} x2={ex} y2={ey} stroke={POINT_COLOR} strokeWidth={1.5} markerEnd="url(#export-arrowhead)" />;
+                const isBroken = !!next.broken;
+                const strokeColor = isBroken ? (isDark ? "#fbbf24" : "#d97706") : POINT_COLOR;
+                return (
+                  <line key={i} x1={x1} y1={y1} x2={ex} y2={ey} stroke={strokeColor} strokeWidth={1.5}
+                    strokeDasharray={isBroken ? "6 5" : undefined}
+                    markerEnd={isBroken ? "url(#export-arrowhead-broken)" : "url(#export-arrowhead)"} />
+                );
               })}
               {/* Points and labels */}
-              {sequence.map((cyl, i) => {
-                const x = xPos(cyl), y = 20 + i * 46 + 40;
-                const prevX = i > 0 ? xPos(sequence[i - 1]) : null;
-                const prevY = i > 0 ? (20 + (i - 1) * 46 + 40) : null;
+              {sequence.map((step, i) => {
+                if (step.value === "?") return null;
+                const x = xPos(step.value), y = 20 + i * 46 + 40;
+                const prevStep = i > 0 ? sequence[i - 1] : null;
+                const prevX = prevStep && prevStep.value !== "?" ? xPos(prevStep.value) : null;
+                const prevY = prevStep ? (20 + (i - 1) * 46 + 40) : null;
                 let labelX = x + 14;
                 let labelY = y - 8;
                 let anchor: "start" | "end" | "middle" = "start";
@@ -519,16 +619,14 @@ export default function DiskScheduling() {
                   <g key={i}>
                     <circle cx={x} cy={y} r={4} fill={i === 0 ? "#f59e0b" : POINT_COLOR} />
                     <text x={labelX} y={labelY} textAnchor={anchor} fontSize="11" fontWeight="bold" fontFamily="monospace"
-                      fill={isDark ? "#e2e8f0" : "#1e293b"}>{cyl}</text>
+                      fill={isDark ? "#e2e8f0" : "#1e293b"}>{step.value}</text>
                   </g>
                 );
               })}
             </svg>
-            <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-2">
-              Horizontal axis = cylinder position (0 – {diskSizeNum - 1}). Each row down represents the next step in the seek sequence.
-            </p>
             <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-1">
               <span style={{ color: "#f59e0b" }}>●</span> Starting head position &nbsp;&nbsp; <span style={{ color: POINT_COLOR }}>●</span> Serviced requests in order
+              {hasUnknown && <>&nbsp;&nbsp;<span style={{ color: "#f59e0b" }}>⇢</span> Wrap-around (distance unknown)</>}
             </p>
           </div>
         )}
