@@ -18,6 +18,24 @@ const RESOURCES = ["A", "B", "C"];
 interface DetectionProcess { id: string; allocation: number[]; request: number[]; }
 interface BankersProcess { id: string; allocation: number[]; max: number[]; }
 
+// ── Example data ──
+const EXAMPLE_DET_PROCS: DetectionProcess[] = [
+  { id: "P0", allocation: [0, 1, 0], request: [0, 0, 1] },
+  { id: "P1", allocation: [2, 0, 0], request: [2, 0, 2] },
+  { id: "P2", allocation: [3, 0, 3], request: [0, 0, 0] },
+  { id: "P3", allocation: [2, 1, 1], request: [1, 0, 0] },
+];
+const EXAMPLE_DET_AVAIL = [0, 0, 0];
+
+const EXAMPLE_BANK_PROCS: BankersProcess[] = [
+  { id: "P0", allocation: [0, 1, 0], max: [7, 5, 3] },
+  { id: "P1", allocation: [2, 0, 0], max: [3, 2, 2] },
+  { id: "P2", allocation: [3, 0, 2], max: [9, 0, 2] },
+  { id: "P3", allocation: [2, 1, 1], max: [2, 2, 2] },
+  { id: "P4", allocation: [0, 0, 2], max: [4, 3, 3] },
+];
+const EXAMPLE_BANK_AVAIL = [3, 3, 2];
+
 function detectDeadlock(processes: DetectionProcess[], available: number[]) {
   const n = processes.length, m = RESOURCES.length;
   const work = [...available], finish = Array(n).fill(false);
@@ -114,6 +132,23 @@ export default function Deadlock() {
     else { html.classList.add("dark"); setIsDark(true); }
   }
 
+  // ── Load Example & Clear All ──
+  function loadExample() {
+    setDetProcs(EXAMPLE_DET_PROCS.map(p => ({ ...p, allocation: [...p.allocation], request: [...p.request] })));
+    setDetAvail([...EXAMPLE_DET_AVAIL]);
+    setBankProcs(EXAMPLE_BANK_PROCS.map(p => ({ ...p, allocation: [...p.allocation], max: [...p.max] })));
+    setBankAvail([...EXAMPLE_BANK_AVAIL]);
+    setRecoveryAction({});
+  }
+
+  function clearAll() {
+    setDetProcs([]);
+    setDetAvail([0, 0, 0]);
+    setBankProcs([]);
+    setBankAvail([0, 0, 0]);
+    setRecoveryAction({});
+  }
+
   const detResult = detectDeadlock(detProcs, detAvail);
   const bankResult = runBankers(bankProcs, bankAvail);
 
@@ -152,6 +187,28 @@ export default function Deadlock() {
           Back to Demos
         </Link>
         <div className="flex items-center gap-3">
+          {/* Load Example button */}
+          <button
+            onClick={loadExample}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono border border-slate-300 dark:border-white/15 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/8 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Load Example
+          </button>
+
+          {/* Clear All button */}
+          <button
+            onClick={clearAll}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono border border-rose-400/50 text-rose-500 dark:text-rose-400 hover:bg-rose-500/10 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Clear All
+          </button>
+
           <ExportButton
             targetId="deadlock-export-snapshot"
             title="Deadlock Simulation"
@@ -367,7 +424,7 @@ export default function Deadlock() {
                 <div className="text-sm text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-2"><span>🟢</span> No deadlocked processes found. Go to Detection tab to configure.</div>
               ) : (
                 <div className="flex flex-col gap-3">
-{detResult.deadlocked.map((pid, i) => (
+                  {detResult.deadlocked.map((pid, i) => (
                     <div key={pid} className="flex items-center justify-between rounded-xl border border-rose-300/40 dark:border-rose-500/20 bg-rose-50/50 dark:bg-rose-950/10 px-4 py-3">
                       <div className="flex items-center gap-3">
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${COLORS[i % COLORS.length]}`}>{pid}</span>
@@ -724,12 +781,11 @@ export default function Deadlock() {
               <div className="text-sm text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-2"><span>🟢</span> No deadlocked processes found.</div>
             ) : (
               <div className="flex flex-col gap-3">
-{detResult.deadlocked.map((pid) => (
+                {detResult.deadlocked.map((pid) => (
                   <div key={pid} className="flex items-center justify-between rounded-xl border border-rose-300/40 dark:border-rose-500/20 bg-rose-50/50 dark:bg-rose-950/10 px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span
                         className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shrink-0"
-         
                       >
                         <span
                           className="text-xs font-bold font-mono"

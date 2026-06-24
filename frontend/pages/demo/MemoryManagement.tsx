@@ -18,24 +18,24 @@ const STATUS_PILL_HEIGHT = 28;
 
 // ── Example data ──────────────────────────────────────────────────────────────
 const MFT_EXAMPLE_BLOCKS: MemoryBlock[] = [
-  { id: "B1", size: 100 },
-  { id: "B2", size: 200 },
-  { id: "B3", size: 300 },
-  { id: "B4", size: 150 },
+  { id: "B1", size: 150 },
+  { id: "B2", size: 250 },
+  { id: "B3", size: 350 },
+  { id: "B4", size: 175 },
 ];
 const MFT_EXAMPLE_PROCESSES: MFTProcess[] = [
   { id: "P1", size: 90 },
-  { id: "P2", size: 180 },
-  { id: "P3", size: 280 },
-  { id: "P4", size: 50 },
+  { id: "P2", size: 160 },
+  { id: "P3", size: 250 },
+  { id: "P4", size: 125 },
 ];
 
 const MVT_EXAMPLE_TOTAL_MEMORY = 500;
 const MVT_EXAMPLE_PROCESSES: SchedProcess[] = [
-  { id: "P1", size: 100, arrival: 0, burst: 4, priority: 2 },
-  { id: "P2", size: 150, arrival: 1, burst: 3, priority: 1 },
-  { id: "P3", size: 80,  arrival: 2, burst: 5, priority: 3 },
-  { id: "P4", size: 120, arrival: 3, burst: 2, priority: 4 },
+  { id: "P1", size: 100, arrival: 0, burst: 6, priority: 4 },
+  { id: "P2", size: 175, arrival: 1, burst: 3, priority: 3 },
+  { id: "P3", size: 90,  arrival: 2, burst: 2, priority: 1 },
+  { id: "P4", size: 130, arrival: 3, burst: 4, priority: 2 },
 ];
 // ─────────────────────────────────────────────────────────────────────────────
 
