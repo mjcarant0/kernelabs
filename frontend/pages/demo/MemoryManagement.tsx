@@ -15,6 +15,30 @@ const TEXT_COLORS = ["text-cyan-400","text-blue-400","text-purple-400","text-eme
 const COLOR_HEX = ["#06b6d4", "#3b82f6", "#a855f7", "#10b981", "#f43f5e", "#f59e0b", "#6366f1", "#14b8a6"];
 const STATUS_PILL_TEXT_Y = 18;
 const STATUS_PILL_HEIGHT = 28;
+
+// ── Example data ──────────────────────────────────────────────────────────────
+const MFT_EXAMPLE_BLOCKS: MemoryBlock[] = [
+  { id: "B1", size: 150 },
+  { id: "B2", size: 250 },
+  { id: "B3", size: 350 },
+  { id: "B4", size: 175 },
+];
+const MFT_EXAMPLE_PROCESSES: MFTProcess[] = [
+  { id: "P1", size: 90 },
+  { id: "P2", size: 160 },
+  { id: "P3", size: 250 },
+  { id: "P4", size: 125 },
+];
+
+const MVT_EXAMPLE_TOTAL_MEMORY = 500;
+const MVT_EXAMPLE_PROCESSES: SchedProcess[] = [
+  { id: "P1", size: 100, arrival: 0, burst: 6, priority: 4 },
+  { id: "P2", size: 175, arrival: 1, burst: 3, priority: 3 },
+  { id: "P3", size: 90,  arrival: 2, burst: 2, priority: 1 },
+  { id: "P4", size: 130, arrival: 3, burst: 4, priority: 2 },
+];
+// ─────────────────────────────────────────────────────────────────────────────
+
 const mftAlgorithmInfo: Record<MFTAlgorithm, { label: string; description: string }> = {
   FirstFit: {
     label: "First Fit",
@@ -627,6 +651,28 @@ export default function MemoryManagement() {
     else { html.classList.add("dark"); setIsDark(true); }
   }
 
+  // ── Load Example ────────────────────────────────────────────────────────────
+  function loadExample() {
+    if (mode === "MFT") {
+      setMemBlocks(MFT_EXAMPLE_BLOCKS.map((b) => ({ ...b })));
+      setMftProcesses(MFT_EXAMPLE_PROCESSES.map((p) => ({ ...p })));
+    } else {
+      setTotalMemory(MVT_EXAMPLE_TOTAL_MEMORY);
+      setMvtProcesses(MVT_EXAMPLE_PROCESSES.map((p) => ({ ...p })));
+    }
+  }
+
+  // ── Clear All ────────────────────────────────────────────────────────────────
+  function clearAll() {
+    if (mode === "MFT") {
+      setMemBlocks([]);
+      setMftProcesses([]);
+    } else {
+      setTotalMemory("");
+      setMvtProcesses([]);
+    }
+  }
+
   const mvtMemBlocks: MemoryBlock[] = [{ id: "MEM", size: totalMemory }];
   const policy = policyByAlgo[schedAlgo];
   const compactionEnabled = compactionByAlgo[schedAlgo];
@@ -750,29 +796,23 @@ export default function MemoryManagement() {
     );
   }
 
-  // Export-specific timeline renderer: uses SVG so colors always render correctly off-screen
   function renderExportMemoryMapTimeline(snapshots: TimelineSnapshot[], totalMem: number, getColorIdx: (pid: string) => number) {
     if (snapshots.length === 0) {
       return <div style={{ fontSize: 13, color: "#94a3b8", fontFamily: "monospace" }}>No timeline data.</div>;
     }
     const safeMem = totalMem || 1;
-    const COL_W = 80;       // column bar width
-    const LABEL_W = 48;     // left KB label area
-    const COL_H = 500;      // column height px
-    const GAP = 24;         // gap between columns
-    const TIME_H = 20;      // time label row height
+    const COL_W = 80;
+    const LABEL_W = 48;
+    const COL_H = 500;
+    const GAP = 24;
+    const TIME_H = 20;
     const FONT = "monospace";
-    const totalW = snapshots.length * (LABEL_W + COL_W + GAP);
     const exportLegendPids = Array.from(
       new Set(
         snapshots.flatMap((snap) =>
           snap.segments
             .filter(
-              (
-                seg
-              ): seg is typeof seg & {
-                processId: string;
-              } => seg.type === "allocated" && !!seg.processId
+              (seg): seg is typeof seg & { processId: string } => seg.type === "allocated" && !!seg.processId
             )
             .map((seg) => seg.processId)
         )
@@ -781,18 +821,8 @@ export default function MemoryManagement() {
     return (
       <div>
         <div style={{ overflowX: "auto", paddingBottom: 8 }}>
-          <svg
-            width={totalW}
-            height={TIME_H + COL_H + 4}
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ display: "block", fontFamily: FONT }}
-          >
-            {snapshots.map((snap, colIdx) => {
-              const xBase = colIdx * (LABEL_W + COL_W + GAP);
-              const barX = xBase + LABEL_W;
-              const barY = TIME_H;
-
-              // Build segment rects
+          <div style={{ display: "flex", flexWrap: "wrap", gap: GAP, alignItems: "flex-start" }}>
+            {snapshots.map((snap) => {
               let yOffset = 0;
               const segRects = snap.segments.map((seg, i) => {
                 const segH = (seg.size / safeMem) * COL_H;
@@ -803,21 +833,18 @@ export default function MemoryManagement() {
                 const cy = yOffset + segH / 2;
                 const rect = (
                   <g key={i}>
-                    <rect x={barX} y={barY + yOffset} width={COL_W} height={segH} fill={fill} />
+                    <rect x={LABEL_W} y={yOffset} width={COL_W} height={segH} fill={fill} />
                     {segH >= 14 && (
-                      <text x={barX + COL_W / 2} y={barY + cy} dominantBaseline="middle" textAnchor="middle" fontSize={11} fontWeight="bold" fill={textFill} fontFamily={FONT}>
+                      <text x={LABEL_W + COL_W / 2} y={cy} dominantBaseline="middle" textAnchor="middle" fontSize={11} fontWeight="bold" fill={textFill} fontFamily={FONT}>
                         {label}
                       </text>
                     )}
-                    {/* segment divider */}
-                    <line x1={barX} y1={barY + yOffset + segH} x2={barX + COL_W} y2={barY + yOffset + segH} stroke="rgba(0,0,0,0.2)" strokeWidth={1} />
+                    <line x1={LABEL_W} y1={yOffset + segH} x2={LABEL_W + COL_W} y2={yOffset + segH} stroke="rgba(0,0,0,0.2)" strokeWidth={1} />
                   </g>
                 );
                 yOffset += segH;
                 return rect;
               });
-
-              // KB boundary labels on left
               let cumKb = 0;
               const boundaries: { kb: number; y: number }[] = [{ kb: 0, y: 0 }];
               for (const seg of snap.segments) {
@@ -825,27 +852,33 @@ export default function MemoryManagement() {
                 boundaries.push({ kb: cumKb, y: (cumKb / safeMem) * COL_H });
               }
               const kbLabels = boundaries.map(({ kb, y }, i) => (
-                <text key={i} x={xBase + LABEL_W - 4} y={barY + y} dominantBaseline="middle" textAnchor="end" fontSize={9} fill="#64748b" fontFamily={FONT}>
+                <text key={i} x={LABEL_W - 4} y={y} dominantBaseline="middle" textAnchor="end" fontSize={9} fill="#64748b" fontFamily={FONT}>
                   {kb} KB
                 </text>
               ));
-
               return (
-                <g key={snap.time}>
-                  {/* Column border */}
-                  <rect x={barX} y={barY} width={COL_W} height={COL_H} fill="none" stroke="#334155" strokeWidth={1} />
-                  {segRects}
-                  {kbLabels}
-                  {/* Time label */}
-                  <text x={barX + COL_W / 2} y={TIME_H / 2} dominantBaseline="middle" textAnchor="middle" fontSize={10} fontWeight="bold" fill="#64748b" fontFamily={FONT}>
-                    {snap.time}
-                  </text>
-                </g>
+                <div
+                  key={snap.time}
+                  style={{
+                    display: "inline-block",
+                    breakInside: "avoid",
+                    pageBreakInside: "avoid",
+                    WebkitColumnBreakInside: "avoid",
+                  } as any}
+                >
+                  <svg width={LABEL_W + COL_W} height={TIME_H + COL_H} xmlns="http://www.w3.org/2000/svg" style={{ display: "block", fontFamily: FONT }}>
+                    <rect x={LABEL_W} y={TIME_H} width={COL_W} height={COL_H} fill="none" stroke="#334155" strokeWidth={1} />
+                    <g transform={`translate(0, ${TIME_H})`}>{segRects}</g>
+                    <g transform={`translate(0, ${TIME_H})`}>{kbLabels}</g>
+                    <text x={LABEL_W + COL_W / 2} y={TIME_H / 2} dominantBaseline="middle" textAnchor="middle" fontSize={10} fontWeight="bold" fill="#64748b" fontFamily={FONT}>
+                      {snap.time}
+                    </text>
+                  </svg>
+                </div>
               );
             })}
-          </svg>
+          </div>
         </div>
-        {/* Legend */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           {exportLegendPids.map((pid) => {
             const cidx = getColorIdx(pid);
@@ -912,6 +945,28 @@ export default function MemoryManagement() {
           Back to Demos
         </Link>
         <div className="flex items-center gap-3">
+          {/* ── Load Example button ── */}
+          <button
+            onClick={loadExample}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold border border-slate-300 dark:border-white/15 bg-white/60 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/25 transition-all duration-150"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Load Example
+          </button>
+
+          {/* ── Clear All button ── */}
+          <button
+            onClick={clearAll}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold border border-rose-400/40 dark:border-rose-500/40 bg-rose-50/60 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 hover:border-rose-400/70 dark:hover:border-rose-500/60 transition-all duration-150"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Clear All
+          </button>
+
           <ExportButton targetId="memory-export-snapshot" title="Memory Management Simulation" subtitle={exportSubtitle} />
           <ThemeToggleSwitch isDark={isDark} onToggle={toggleTheme} small />
           <div className="flex items-center gap-2 font-mono text-xs text-cyan-600 dark:text-cyan-400">
@@ -1371,16 +1426,13 @@ export default function MemoryManagement() {
         {/* ════════ MFT EXPORT ════════ */}
         {mode === "MFT" && (
           <>
-            {/* Description — full width */}
             <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
               <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Algorithm</p>
               <h2 style={{ fontWeight: 700, color: isDark ? "#f1f5f9" : "#0f172a", fontSize: 18, margin: "0 0 6px 0" }}>{mftAlgorithmInfo[mftAlgo].label}</h2>
               <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>{mftAlgorithmInfo[mftAlgo].description}</p>
             </div>
 
-            {/* Input tables — side by side */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {/* Memory Blocks */}
               <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Memory Blocks</p>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -1401,7 +1453,6 @@ export default function MemoryManagement() {
                 </table>
               </div>
 
-              {/* Processes */}
               <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Processes</p>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -1423,7 +1474,6 @@ export default function MemoryManagement() {
               </div>
             </div>
 
-            {/* Allocation Result — full width */}
             {mftResults.length > 0 && (
               <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Allocation Result</p>
@@ -1451,7 +1501,6 @@ export default function MemoryManagement() {
               </div>
             )}
 
-            {/* Memory Map — full width, timeline style */}
             {mftMemoryMap.length > 0 && (
               <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Memory Map</p>
@@ -1473,7 +1522,6 @@ export default function MemoryManagement() {
                       <span style={{ fontFamily: "monospace", fontSize: 11, color: "#64748b", width: 60, flexShrink: 0, textAlign: "right" }}>{block.totalSize} KB</span>
                     </div>
                   ))}
-                  {/* Legend */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8, paddingTop: 16, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
                     {mftAllProcessIds.map((pid, i) => (
                       <div key={pid} style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1495,14 +1543,12 @@ export default function MemoryManagement() {
         {/* ════════ MVT EXPORT ════════ */}
         {mode === "MVT" && (
           <>
-            {/* Description — full width */}
             <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
               <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Scheduling · {schedulingInfo[schedAlgo].label}</p>
               <h2 style={{ fontWeight: 700, color: isDark ? "#f1f5f9" : "#0f172a", fontSize: 18, margin: "0 0 6px 0" }}>{allocationInfo[policy].label} Allocation{compactionEnabled ? " · With Compaction" : ""}</h2>
               <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>{allocationInfo[policy].description}</p>
             </div>
 
-            {/* Processes table — full width */}
             <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
               <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Processes</p>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1529,7 +1575,6 @@ export default function MemoryManagement() {
               </table>
             </div>
 
-            {/* Round Robin CPU schedule — full width */}
             {schedAlgo === "RoundRobin" && rrSchedule.length > 0 && (
               <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>CPU Scheduling Result (Round Robin, q = {quantum || 0})</p>
@@ -1561,7 +1606,6 @@ export default function MemoryManagement() {
               </div>
             )}
 
-            {/* Allocation Result — full width */}
             {mvtResults.length > 0 && (
               <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Allocation Result</p>
@@ -1589,7 +1633,6 @@ export default function MemoryManagement() {
               </div>
             )}
 
-            {/* Memory Utilization — full width */}
             {mvtResults.length > 0 && (
               <div style={{ borderRadius: 16, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>
@@ -1599,7 +1642,6 @@ export default function MemoryManagement() {
               </div>
             )}
 
-            {/* Memory Map — full width, same timeline visual as simulation */}
             {mvtMemoryMap.length > 0 && (
               <div style={{ borderRadius: 16, border: `1px solid ${isDark ? (compactionEnabled ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.08)") : "rgba(0,0,0,0.08)"}`, background: "transparent", padding: 20 }}>
                 <p style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>

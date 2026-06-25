@@ -159,6 +159,38 @@ function runMFU(refs: number[], numFrames: number): ReplacementStep[] {
 
 const COLORS = ["bg-cyan-500","bg-blue-500","bg-purple-500","bg-emerald-500","bg-rose-500","bg-amber-500","bg-indigo-500","bg-teal-500","bg-pink-500","bg-orange-500"];
 
+// Splits an array into fixed-size chunks, e.g. chunkArray([1,2,3,4,5], 2) -> [[1,2],[3,4],[5]]
+// Used to break the Frame State per Reference table into multiple tables of up to 20 columns each,
+// so the page doesn't need to be stretched horizontally once the reference string gets long.
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  if (arr.length === 0) return [];
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
+
+// ── Example data used by the "Load Example" button for each tab ──
+const EXAMPLE_PAGE_ENTRIES: PageEntry[] = [
+  { pageNumber: "0", frameNumber: "2", validBit: "1" },
+  { pageNumber: "1", frameNumber: "0", validBit: "1" },
+  { pageNumber: "2", frameNumber: "1", validBit: "1" },
+  { pageNumber: "3", frameNumber: "0", validBit: "0" },
+];
+const EXAMPLE_PAGE_SIZE = "1024";
+const EXAMPLE_LOGICAL_ADDRESS = 2050;
+
+const EXAMPLE_SEGMENTS: Segment[] = [
+  { segmentId: "0", base: "1000", limit: "400", size: "400", label: "Code" },
+  { segmentId: "1", base: "1400", limit: "1000", size: "1000", label: "Heap" },
+  { segmentId: "2", base: "2400", limit: "300", size: "300", label: "Stack" },
+];
+const EXAMPLE_SEG_INPUT = { segmentId: 1, offset: 150 };
+
+const EXAMPLE_REF_STRING = "7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1";
+const EXAMPLE_NUM_FRAMES = "3";
+
 export default function VirtualMemory() {
   const [selected, setSelected] = useState<Algorithm>("Paging");
   const [pageSize, setPageSize] = useState("");
@@ -194,6 +226,38 @@ export default function VirtualMemory() {
   function focusNextSeg(i: number, field: string) {
     if (i + 1 >= segments.length) return;
     setTimeout(() => { const el = document.querySelector<HTMLInputElement>(`[data-table="seg"][data-row="${i+1}"][data-field="${field}"]`); el?.focus(); el?.select(); }, 50);
+  }
+
+  // ── Load Example / Clear All ──
+  // Each acts only on the data relevant to the currently selected tab,
+  // so switching tabs and clicking either button feels predictable.
+  function loadExample() {
+    if (selected === "Paging") {
+      setPageEntries(EXAMPLE_PAGE_ENTRIES.map((e) => ({ ...e })));
+      setPageSize(EXAMPLE_PAGE_SIZE);
+      setLogicalInput(EXAMPLE_LOGICAL_ADDRESS);
+    } else if (selected === "Segmentation") {
+      setSegments(EXAMPLE_SEGMENTS.map((s) => ({ ...s })));
+      setSegInput({ ...EXAMPLE_SEG_INPUT });
+    } else {
+      setRefString(EXAMPLE_REF_STRING);
+      setNumFrames(EXAMPLE_NUM_FRAMES);
+    }
+  }
+
+  function clearAll() {
+    if (selected === "Paging") {
+      setPageEntries([]);
+      setPageSize("");
+      setLogicalInput(0);
+    } else if (selected === "Segmentation") {
+      setSegments([]);
+      setSegInput({ segmentId: 0, offset: 0 });
+    } else {
+      setRefString("");
+      setNumFrames("3");
+      setReplacementAlgo("FIFO");
+    }
   }
 
   const refs = refString.trim().split(/\s+/).map(Number).filter((n) => !isNaN(n));
@@ -270,6 +334,20 @@ export default function VirtualMemory() {
           Back to Demos
         </Link>
         <div className="flex items-center gap-3">
+          <button
+            onClick={loadExample}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300 dark:text-slate-300 border border-slate-600/50 dark:border-white/15 bg-slate-800/40 dark:bg-white/5 hover:bg-slate-700/50 dark:hover:bg-white/10 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            Load Example
+          </button>
+          <button
+            onClick={clearAll}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-rose-400 border border-rose-500/40 bg-rose-500/5 hover:bg-rose-500/15 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            Clear All
+          </button>
           <ExportButton
             targetId="virtual-memory-export-snapshot"
             title="Virtual Memory Simulation"
@@ -588,41 +666,55 @@ export default function VirtualMemory() {
                 {steps.length === 0 ? (
                   <div className="flex items-center justify-center h-16 text-slate-400 font-mono text-sm"><span className="text-cyan-500 mr-2">&gt;</span> Enter a reference string to simulate</div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="text-xs font-mono border-collapse min-w-max">
-                      <thead>
-                        <tr>
-                          <td className="pr-3 pb-2 text-slate-400 dark:text-slate-500 whitespace-nowrap">Reference</td>
-                          {steps.map((s, i) => (
-                            <td key={i} className={`w-10 text-center pb-2 font-bold ${s.pageFault ? "text-rose-500 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>{s.page}</td>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Array.from({ length: frames }).map((_, fi) => (
-                          <tr key={fi}>
-                            <td className="pr-3 py-1 text-slate-400 dark:text-slate-500">F{fi + 1}</td>
-                            {steps.map((s, i) => {
-                              const val = s.frames[fi];
-                              const colorIdx = val !== null ? uniquePages.indexOf(val) : -1;
-                              return (
-                                <td key={i} className="w-10 py-1 text-center">
-                                  {val !== null
-                                    ? <span className={`inline-flex w-7 h-7 rounded-md text-white text-xs font-bold items-center justify-center ${COLORS[colorIdx % COLORS.length]}`}>{val}</span>
-                                    : <span className="inline-block w-7 h-7 rounded-md bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/8" />}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                        <tr>
-                          <td className="pr-3 pt-2 text-slate-400 dark:text-slate-500">Fault</td>
-                          {steps.map((s, i) => (
-                            <td key={i} className="w-10 pt-2 text-center">{s.pageFault ? <span className="text-rose-500 font-bold">✗</span> : <span className="text-emerald-500">✓</span>}</td>
-                          ))}
-                        </tr>
-                      </tbody>
-                    </table>
+                  <div className="flex flex-col gap-5">
+                    {chunkArray(steps, 20).map((chunk, chunkIdx) => {
+                      const startIdx = chunkIdx * 20;
+                      return (
+                        <div key={chunkIdx} className="flex flex-col gap-2">
+                          {chunkArray(steps, 20).length > 1 && (
+                            <p className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                              References {startIdx + 1}–{startIdx + chunk.length}
+                            </p>
+                          )}
+                          <div className="overflow-x-auto">
+                            <table className="text-xs font-mono border-collapse min-w-max">
+                              <thead>
+                                <tr>
+                                  <td className="pr-3 pb-2 text-slate-400 dark:text-slate-500 whitespace-nowrap">Reference</td>
+                                  {chunk.map((s, i) => (
+                                    <td key={i} className={`w-10 text-center pb-2 font-bold ${s.pageFault ? "text-rose-500 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>{s.page}</td>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Array.from({ length: frames }).map((_, fi) => (
+                                  <tr key={fi}>
+                                    <td className="pr-3 py-1 text-slate-400 dark:text-slate-500">F{fi + 1}</td>
+                                    {chunk.map((s, i) => {
+                                      const val = s.frames[fi];
+                                      const colorIdx = val !== null ? uniquePages.indexOf(val) : -1;
+                                      return (
+                                        <td key={i} className="w-10 py-1 text-center">
+                                          {val !== null
+                                            ? <span className={`inline-flex w-7 h-7 rounded-md text-white text-xs font-bold items-center justify-center ${COLORS[colorIdx % COLORS.length]}`}>{val}</span>
+                                            : <span className="inline-block w-7 h-7 rounded-md bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/8" />}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+                                <tr>
+                                  <td className="pr-3 pt-2 text-slate-400 dark:text-slate-500">Fault</td>
+                                  {chunk.map((s, i) => (
+                                    <td key={i} className="w-10 pt-2 text-center">{s.pageFault ? <span className="text-rose-500 font-bold">✗</span> : <span className="text-emerald-500">✓</span>}</td>
+                                  ))}
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -640,14 +732,14 @@ export default function VirtualMemory() {
           top: 0,
           left: "-9999px",
           width: "900px",
+          height: "fit-content",
           zIndex: -1,
           pointerEvents: "none",
           overflow: "visible",
           padding: "32px",
-          paddingBottom: "80px",
           display: "flex",
           flexDirection: "column",
-          gap: "40px",
+          gap: "35px",
           background: isDark ? "#020b18" : "#f0f6fa",
         }}
       >
@@ -839,74 +931,87 @@ export default function VirtualMemory() {
               <span className="text-slate-400">Frames: {frames}</span>
               <span className="text-slate-400">Reference String: {refString}</span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="text-xs font-mono border-collapse min-w-max">
-                <thead>
-                  <tr>
-                    <td className="pr-3 pb-2 text-slate-400 dark:text-slate-500 whitespace-nowrap">Reference</td>
-                    {steps.map((s, i) => (
-                      <td key={i} className={`w-10 text-center pb-2 font-bold ${s.pageFault ? "text-rose-500 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>{s.page}</td>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from({ length: frames }).map((_, fi) => (
-                    <tr key={fi}>
-                      <td className="pr-3 py-1 text-slate-400 dark:text-slate-500">F{fi + 1}</td>
-                      {steps.map((s, i) => {
-                        const val = s.frames[fi];
-                        const colorIdx = val !== null ? uniquePages.indexOf(val) : -1;
-                        return (
-                          <td key={i} className="w-10 py-1 text-center">
-                            {val !== null
-                              ? <span
-                                  style={{
-                                    display: "inline-flex",
-                                    width: "28px",
-                                    height: "28px",
-                                    borderRadius: "6px",
-                                    color: "#ffffff",
-                                    fontSize: "12px",
-                                    fontWeight: 700,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    backgroundColor: [
-                                      "#06b6d4",
-                                      "#3b82f6",
-                                      "#a855f7",
-                                      "#10b981",
-                                      "#f43f5e",
-                                      "#f59e0b",
-                                      "#6366f1",
-                                      "#14b8a6",
-                                      "#ec4899",
-                                      "#f97316",
-                                    ][colorIdx % 10],
-                                  }}
-                                >
-                                  {val}
-                                </span>
-                              : <span style={{
-                                  display: "inline-block",
-                                  width: "28px",
-                                  height: "28px",
-                                  borderRadius: "6px",
-                                  backgroundColor: "#f1f5f9",
-                                  border: "1px solid #cbd5e1"
-                                }} />}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                  <tr>
-                    <td className="pr-3 pt-2 text-slate-400 dark:text-slate-500" style={{ position: "relative", top: "-4px" }}>Fault</td>
-                    {steps.map((s, i) => (
-                      <td key={i} className="w-10 py-2 align-middle text-center">{s.pageFault ? <span className="text-rose-500 font-bold">✗</span> : <span className="text-emerald-500">✓</span>}</td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
+            <div className="flex flex-col gap-5">
+              {chunkArray(steps, 20).map((chunk, chunkIdx) => {
+                const startIdx = chunkIdx * 20;
+                const totalChunks = chunkArray(steps, 20).length;
+                return (
+                  <div key={chunkIdx} className="flex flex-col gap-2">
+                    {totalChunks > 1 && (
+                      <p className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                        References {startIdx + 1}–{startIdx + chunk.length}
+                      </p>
+                    )}
+                    <table className="text-xs font-mono border-collapse w-max">
+                      <thead>
+                        <tr>
+                          <td className="pr-3 pb-2 text-slate-400 dark:text-slate-500 whitespace-nowrap">Reference</td>
+                          {chunk.map((s, i) => (
+                            <td key={i} className={`w-10 text-center pb-2 font-bold ${s.pageFault ? "text-rose-500 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>{s.page}</td>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.from({ length: frames }).map((_, fi) => (
+                          <tr key={fi}>
+                            <td className="pr-3 py-1 text-slate-400 dark:text-slate-500">F{fi + 1}</td>
+                            {chunk.map((s, i) => {
+                              const val = s.frames[fi];
+                              const colorIdx = val !== null ? uniquePages.indexOf(val) : -1;
+                              return (
+                                <td key={i} className="w-10 py-1 text-center">
+                                  {val !== null
+                                    ? <span
+                                        style={{
+                                          display: "inline-flex",
+                                          width: "28px",
+                                          height: "28px",
+                                          borderRadius: "6px",
+                                          color: "#ffffff",
+                                          fontSize: "12px",
+                                          fontWeight: 700,
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          backgroundColor: [
+                                            "#06b6d4",
+                                            "#3b82f6",
+                                            "#a855f7",
+                                            "#10b981",
+                                            "#f43f5e",
+                                            "#f59e0b",
+                                            "#6366f1",
+                                            "#14b8a6",
+                                            "#ec4899",
+                                            "#f97316",
+                                          ][colorIdx % 10],
+                                        }}
+                                      >
+                                        {val}
+                                      </span>
+                                    : <span style={{
+                                        display: "inline-block",
+                                        width: "28px",
+                                        height: "28px",
+                                        borderRadius: "6px",
+                                        backgroundColor: "#f1f5f9",
+                                        border: "1px solid #cbd5e1"
+                                      }} />}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                        <tr>
+                          <td className="pr-3 pt-2 text-slate-400 dark:text-slate-500" style={{ position: "relative", top: "-4px" }}>Fault</td>
+                          {chunk.map((s, i) => (
+                            <td key={i} className="w-10 py-2 align-middle text-center">{s.pageFault ? <span className="text-rose-500 font-bold">✗</span> : <span className="text-emerald-500">✓</span>}</td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
