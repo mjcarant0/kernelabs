@@ -864,7 +864,7 @@ export default function MemoryManagement() {
                     breakInside: "avoid",
                     pageBreakInside: "avoid",
                     WebkitColumnBreakInside: "avoid",
-                  } as any}
+                  } as React.CSSProperties}
                 >
                   <svg width={LABEL_W + COL_W} height={TIME_H + COL_H} xmlns="http://www.w3.org/2000/svg" style={{ display: "block", fontFamily: FONT }}>
                     <rect x={LABEL_W} y={TIME_H} width={COL_W} height={COL_H} fill="none" stroke="#334155" strokeWidth={1} />

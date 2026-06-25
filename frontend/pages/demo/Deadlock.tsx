@@ -344,7 +344,7 @@ export default function Deadlock() {
               </div>
               <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">Banker's Algorithm Table</p>
+                  <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">Banker&apos; Algorithm Table</p>
                   <button onClick={addBankProc} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-400/30 hover:bg-cyan-500/20 transition-colors">+ Add</button>
                 </div>
                 <div className="overflow-x-auto">
