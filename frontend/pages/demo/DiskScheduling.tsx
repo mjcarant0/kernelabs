@@ -29,12 +29,6 @@ function totalMovement(seq: SeekStep[]): { total: number; hasUnknown: boolean } 
       continue;
     }
     if (seq[i + 1].unknownGap) {
-      // C-SCAN wrap with an unknown disk size: the real path goes
-      // a -> (unknown disk edge) -> 0 -> b. Whatever the edge's true position,
-      // the detour can never cost less than a + b (that minimum is reached when
-      // the edge sits exactly at whichever of a/b is farther out), so that sum
-      // is the guaranteed lower bound for this hop. The actual total could be
-      // higher, hence hasUnknown stays true and the UI shows a "+".
       total += Math.abs(a) + Math.abs(b);
       hasUnknown = true;
       continue;
@@ -177,6 +171,21 @@ export default function DiskScheduling() {
     else { html.classList.add("dark"); setIsDark(true); }
   }
 
+  function loadExample() {
+    setSelected("FCFS");
+    setRequestStr("30 67 37 167 14 124 69 143");
+    setHead("1");
+    setMaxValue("200");
+    setDirection("right");
+  }
+
+  function clearAll() {
+    setRequestStr("");
+    setHead("");
+    setMaxValue("");
+    setDirection("right");
+  }
+
   const requests = requestStr.trim().split(/[\s,]+/).filter(Boolean).map(Number).filter((n) => !isNaN(n));
   const headNum = Number(head) || 0;
   const maxValueTrimmed = maxValue.trim();
@@ -216,6 +225,24 @@ export default function DiskScheduling() {
           Back to Demos
         </Link>
         <div className="flex items-center gap-3">
+          <button
+            onClick={loadExample}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Load Example
+          </button>
+          <button
+            onClick={clearAll}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium border border-rose-400/40 text-rose-500 dark:text-rose-400 hover:bg-rose-500/10 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Clear All
+          </button>
           <ExportButton
             targetId="disk-export-snapshot"
             title="Disk Scheduling Simulation"
@@ -275,14 +302,12 @@ export default function DiskScheduling() {
                   Request Queue (numbers, space or comma separated)
                 </label>
                 <input value={requestStr} onChange={(e) => setRequestStr(e.target.value)}
-                  placeholder="e.g. 98 183 37 122 14 124 65 67"
                   className="w-full bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
               </div>
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="md:w-48">
                   <label className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Initial Head Position</label>
                   <input type="number" min={0} value={head} onChange={(e) => setHead(e.target.value)}
-                    placeholder="e.g. 53"
                     className="w-full bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
                 </div>
                 <div className="md:w-48">
@@ -290,7 +315,6 @@ export default function DiskScheduling() {
                     Max Value <span className="text-slate-400 dark:text-slate-500">(&quot;?&quot; if unknown)</span>
                   </label>
                   <input type="text" value={maxValue} onChange={(e) => setMaxValue(e.target.value)}
-                    placeholder="e.g. 199 or ?"
                     className="w-full bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-500 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
                 </div>
                 {info.needsDirection && (
