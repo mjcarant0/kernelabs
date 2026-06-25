@@ -807,7 +807,6 @@ export default function MemoryManagement() {
     const GAP = 24;
     const TIME_H = 20;
     const FONT = "monospace";
-    const totalW = snapshots.length * (LABEL_W + COL_W + GAP);
     const exportLegendPids = Array.from(
       new Set(
         snapshots.flatMap((snap) =>
@@ -822,11 +821,8 @@ export default function MemoryManagement() {
     return (
       <div>
         <div style={{ overflowX: "auto", paddingBottom: 8 }}>
-          <svg width={totalW} height={TIME_H + COL_H + 4} xmlns="http://www.w3.org/2000/svg" style={{ display: "block", fontFamily: FONT }}>
-            {snapshots.map((snap, colIdx) => {
-              const xBase = colIdx * (LABEL_W + COL_W + GAP);
-              const barX = xBase + LABEL_W;
-              const barY = TIME_H;
+          <div style={{ display: "flex", flexWrap: "wrap", gap: GAP, alignItems: "flex-start" }}>
+            {snapshots.map((snap) => {
               let yOffset = 0;
               const segRects = snap.segments.map((seg, i) => {
                 const segH = (seg.size / safeMem) * COL_H;
@@ -837,13 +833,13 @@ export default function MemoryManagement() {
                 const cy = yOffset + segH / 2;
                 const rect = (
                   <g key={i}>
-                    <rect x={barX} y={barY + yOffset} width={COL_W} height={segH} fill={fill} />
+                    <rect x={LABEL_W} y={yOffset} width={COL_W} height={segH} fill={fill} />
                     {segH >= 14 && (
-                      <text x={barX + COL_W / 2} y={barY + cy} dominantBaseline="middle" textAnchor="middle" fontSize={11} fontWeight="bold" fill={textFill} fontFamily={FONT}>
+                      <text x={LABEL_W + COL_W / 2} y={cy} dominantBaseline="middle" textAnchor="middle" fontSize={11} fontWeight="bold" fill={textFill} fontFamily={FONT}>
                         {label}
                       </text>
                     )}
-                    <line x1={barX} y1={barY + yOffset + segH} x2={barX + COL_W} y2={barY + yOffset + segH} stroke="rgba(0,0,0,0.2)" strokeWidth={1} />
+                    <line x1={LABEL_W} y1={yOffset + segH} x2={LABEL_W + COL_W} y2={yOffset + segH} stroke="rgba(0,0,0,0.2)" strokeWidth={1} />
                   </g>
                 );
                 yOffset += segH;
@@ -856,22 +852,32 @@ export default function MemoryManagement() {
                 boundaries.push({ kb: cumKb, y: (cumKb / safeMem) * COL_H });
               }
               const kbLabels = boundaries.map(({ kb, y }, i) => (
-                <text key={i} x={xBase + LABEL_W - 4} y={barY + y} dominantBaseline="middle" textAnchor="end" fontSize={9} fill="#64748b" fontFamily={FONT}>
+                <text key={i} x={LABEL_W - 4} y={y} dominantBaseline="middle" textAnchor="end" fontSize={9} fill="#64748b" fontFamily={FONT}>
                   {kb} KB
                 </text>
               ));
               return (
-                <g key={snap.time}>
-                  <rect x={barX} y={barY} width={COL_W} height={COL_H} fill="none" stroke="#334155" strokeWidth={1} />
-                  {segRects}
-                  {kbLabels}
-                  <text x={barX + COL_W / 2} y={TIME_H / 2} dominantBaseline="middle" textAnchor="middle" fontSize={10} fontWeight="bold" fill="#64748b" fontFamily={FONT}>
-                    {snap.time}
-                  </text>
-                </g>
+                <div
+                  key={snap.time}
+                  style={{
+                    display: "inline-block",
+                    breakInside: "avoid",
+                    pageBreakInside: "avoid",
+                    WebkitColumnBreakInside: "avoid",
+                  } as any}
+                >
+                  <svg width={LABEL_W + COL_W} height={TIME_H + COL_H} xmlns="http://www.w3.org/2000/svg" style={{ display: "block", fontFamily: FONT }}>
+                    <rect x={LABEL_W} y={TIME_H} width={COL_W} height={COL_H} fill="none" stroke="#334155" strokeWidth={1} />
+                    <g transform={`translate(0, ${TIME_H})`}>{segRects}</g>
+                    <g transform={`translate(0, ${TIME_H})`}>{kbLabels}</g>
+                    <text x={LABEL_W + COL_W / 2} y={TIME_H / 2} dominantBaseline="middle" textAnchor="middle" fontSize={10} fontWeight="bold" fill="#64748b" fontFamily={FONT}>
+                      {snap.time}
+                    </text>
+                  </svg>
+                </div>
               );
             })}
-          </svg>
+          </div>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           {exportLegendPids.map((pid) => {

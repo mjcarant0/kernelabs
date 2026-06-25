@@ -29,12 +29,6 @@ function totalMovement(seq: SeekStep[]): { total: number; hasUnknown: boolean } 
       continue;
     }
     if (seq[i + 1].unknownGap) {
-      // C-SCAN wrap with an unknown disk size: the real path goes
-      // a -> (unknown disk edge) -> 0 -> b. Whatever the edge's true position,
-      // the detour can never cost less than a + b (that minimum is reached when
-      // the edge sits exactly at whichever of a/b is farther out), so that sum
-      // is the guaranteed lower bound for this hop. The actual total could be
-      // higher, hence hasUnknown stays true and the UI shows a "+".
       total += Math.abs(a) + Math.abs(b);
       hasUnknown = true;
       continue;

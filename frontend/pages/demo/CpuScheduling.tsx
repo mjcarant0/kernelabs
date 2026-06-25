@@ -43,44 +43,43 @@ const algorithmInfo: Record<Algorithm, { label: string; description: string; col
   },
 };
 
-// ── Example data per algorithm ──────────────────────────────────────────────
 const EXAMPLE_DATA: Record<Algorithm, Process[]> = {
   FCFS: [
-    { id: "P1", arrivalTime: 0, burstTime: 5 },
-    { id: "P2", arrivalTime: 1, burstTime: 3 },
-    { id: "P3", arrivalTime: 2, burstTime: 8 },
+    { id: "P1", arrivalTime: 0, burstTime: 6 },
+    { id: "P2", arrivalTime: 1, burstTime: 7 },
+    { id: "P3", arrivalTime: 2, burstTime: 4 },
     { id: "P4", arrivalTime: 3, burstTime: 2 },
   ],
   SJF: [
     { id: "P1", arrivalTime: 0, burstTime: 6 },
-    { id: "P2", arrivalTime: 1, burstTime: 2 },
-    { id: "P3", arrivalTime: 2, burstTime: 8 },
-    { id: "P4", arrivalTime: 3, burstTime: 3 },
+    { id: "P2", arrivalTime: 1, burstTime: 9 },
+    { id: "P3", arrivalTime: 2, burstTime: 2 },
+    { id: "P4", arrivalTime: 3, burstTime: 5 },
   ],
   Priority: [
-    { id: "P1", arrivalTime: 0, burstTime: 5, priority: 3 },
-    { id: "P2", arrivalTime: 1, burstTime: 3, priority: 1 },
-    { id: "P3", arrivalTime: 2, burstTime: 8, priority: 4 },
-    { id: "P4", arrivalTime: 3, burstTime: 2, priority: 2 },
+    { id: "P1", arrivalTime: 0, burstTime: 5, priority: 2 },
+    { id: "P2", arrivalTime: 1, burstTime: 3, priority: 4 },
+    { id: "P3", arrivalTime: 2, burstTime: 9, priority: 3 },
+    { id: "P4", arrivalTime: 3, burstTime: 7, priority: 1 },
   ],
   RoundRobin: [
-    { id: "P1", arrivalTime: 0, burstTime: 5 },
-    { id: "P2", arrivalTime: 1, burstTime: 3 },
-    { id: "P3", arrivalTime: 2, burstTime: 8 },
-    { id: "P4", arrivalTime: 3, burstTime: 6 },
+    { id: "P1", arrivalTime: 0, burstTime: 6 },
+    { id: "P2", arrivalTime: 1, burstTime: 7 },
+    { id: "P3", arrivalTime: 2, burstTime: 4 },
+    { id: "P4", arrivalTime: 3, burstTime: 2 },
   ],
 };
 
-function defaultRow(algo: Algorithm, index: number): Process {
+function defaultRow(_algo: Algorithm, index: number): Process {
   return {
     id: `P${index + 1}`,
     arrivalTime: 0,
     burstTime: 0,
-    priority: algo === "Priority" ? 1 : undefined,
+    priority: 1, // always stored; only shown in UI when algo is Priority
   };
 }
 
-function computeGantt( algo: Algorithm, processes: Process[], globalQuantum: number, isPreemptive: boolean): GanttBlock[] {
+function computeGantt(algo: Algorithm, processes: Process[], globalQuantum: number, isPreemptive: boolean): GanttBlock[] {
   const valid = processes.filter(
     (p) => p.id && p.arrivalTime !== "" && p.burstTime !== "" && Number(p.burstTime) > 0
   );
@@ -240,14 +239,38 @@ function blockWidth(burstTime: number): number {
   return Math.min(Math.max(burstTime * PX_PER_UNIT, MIN_BLOCK_WIDTH), MAX_BLOCK_WIDTH);
 }
 
+function makeExampleRows(algo: Algorithm): Process[] {
+  return EXAMPLE_DATA[algo].map((p, i) => ({
+    ...p,
+    priority: p.priority !== undefined ? p.priority : i + 1,
+  }));
+}
+
+function makeEmptyRows(algo: Algorithm): Process[] {
+  return [defaultRow(algo, 0), defaultRow(algo, 1), defaultRow(algo, 2)];
+}
+
 export default function CpuScheduling() {
   const [selected, setSelected] = useState<Algorithm>("FCFS");
   const [isPreemptive, setIsPreemptive] = useState<boolean>(false);
-  const [rows, setRows] = useState<Process[]>([
-    defaultRow("FCFS", 0),
-    defaultRow("FCFS", 1),
-    defaultRow("FCFS", 2),
-  ]);
+
+  // Each algorithm keeps its own rows so switching never overwrites another algo's state.
+  const [algoRows, setAlgoRows] = useState<Record<Algorithm, Process[]>>({
+    FCFS: makeEmptyRows("FCFS"),
+    SJF: makeEmptyRows("SJF"),
+    Priority: makeEmptyRows("Priority"),
+    RoundRobin: makeEmptyRows("RoundRobin"),
+  });
+
+  // Convenience: current algo's rows
+  const rows = algoRows[selected];
+  function setRows(updater: Process[] | ((prev: Process[]) => Process[])) {
+    setAlgoRows((prev) => ({
+      ...prev,
+      [selected]: typeof updater === "function" ? updater(prev[selected]) : updater,
+    }));
+  }
+
   const [globalQuantum, setGlobalQuantum] = useState<string>("2");
   const [isDark, setIsDark] = useState(true);
 
@@ -281,10 +304,11 @@ export default function CpuScheduling() {
     ? `${info.label} (${isPreemptive ? "Preemptive" : "Non-Preemptive"})`
     : info.label;
 
+  // Just switch algorithm — each algo's rows are stored independently in algoRows,
+  // so nothing is ever lost or overwritten when switching.
   function handleAlgoChange(algo: Algorithm) {
     setSelected(algo);
     setIsPreemptive(false);
-    setRows((prev) => prev.map((row) => ({ ...row, priority: algo === "Priority" ? row.priority ?? 1 : undefined })));
   }
 
   function addRow() {
@@ -312,12 +336,10 @@ export default function CpuScheduling() {
     }, 50);
   }
 
-  // ── Load Example ────────────────────────────────────────────────────────────
   function loadExample() {
-    setRows(EXAMPLE_DATA[selected].map((p) => ({ ...p })));
+    setRows(makeExampleRows(selected));
   }
 
-  // ── Clear All ───────────────────────────────────────────────────────────────
   function clearAll() {
     setRows([defaultRow(selected, 0), defaultRow(selected, 1), defaultRow(selected, 2)]);
   }
@@ -337,6 +359,26 @@ export default function CpuScheduling() {
           Back to Demos
         </Link>
         <div className="flex items-center gap-3">
+          <button onClick={loadExample}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono
+              border border-slate-200 dark:border-white/10
+              text-slate-600 dark:text-slate-300
+              hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Load Example
+          </button>
+          <button onClick={clearAll}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono
+              border border-rose-400/40 dark:border-rose-500/30
+              text-rose-600 dark:text-rose-400
+              hover:bg-rose-500/10 transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Clear All
+          </button>
           <ExportButton
             targetId="cpu-export-snapshot"
             title="CPU Scheduling Simulation"
@@ -441,28 +483,7 @@ export default function CpuScheduling() {
               <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 Process Table
               </p>
-              {/* ── Load Example + Clear All + Add Row ── */}
               <div className="flex items-center gap-2">
-                <button onClick={loadExample}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono
-                    border border-slate-200 dark:border-white/10
-                    text-slate-600 dark:text-slate-300
-                    hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Load Example
-                </button>
-                <button onClick={clearAll}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono
-                    border border-rose-400/40 dark:border-rose-500/30
-                    text-rose-600 dark:text-rose-400
-                    hover:bg-rose-500/10 transition-colors">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Clear All
-                </button>
                 <button onClick={addRow}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono
                     bg-cyan-500/10 dark:bg-cyan-500/15 text-cyan-600 dark:text-cyan-400

@@ -732,13 +732,14 @@ export default function VirtualMemory() {
           top: 0,
           left: "-9999px",
           width: "900px",
+          height: "fit-content",
           zIndex: -1,
           pointerEvents: "none",
           overflow: "visible",
           padding: "32px",
           display: "flex",
           flexDirection: "column",
-          gap: "40px",
+          gap: "35px",
           background: isDark ? "#020b18" : "#f0f6fa",
         }}
       >

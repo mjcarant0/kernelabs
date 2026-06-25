@@ -9,7 +9,7 @@ type Strategy = "Detection" | "Prevention" | "Recovery";
 
 const strategyInfo: Record<Strategy, { label: string; description: string }> = {
   Detection: { label: "Deadlock Detection", description: "Periodically checks the system for deadlock by examining resource allocation and process requests. Uses the Wait-For Graph to detect circular waits." },
-  Prevention: { label: "Deadlock Prevention (Banker&apos;s Algorithm)", description: "Ensures the system never enters an unsafe state by simulating resource allocation before granting requests. A safe sequence means no deadlock is possible." },
+  Prevention: { label: "Deadlock Prevention (Banker's Algorithm)", description: "Ensures the system never enters an unsafe state by simulating resource allocation before granting requests. A safe sequence means no deadlock is possible." },
   Recovery: { label: "Deadlock Recovery", description: "Once a deadlock is detected, the OS can recover by terminating one or more processes or by preempting resources from a process to break the cycle." },
 };
 
@@ -20,21 +20,21 @@ interface BankersProcess { id: string; allocation: number[]; max: number[]; }
 
 // ── Example data ──
 const EXAMPLE_DET_PROCS: DetectionProcess[] = [
-  { id: "P0", allocation: [0, 1, 0], request: [0, 0, 1] },
-  { id: "P1", allocation: [2, 0, 0], request: [2, 0, 2] },
-  { id: "P2", allocation: [3, 0, 3], request: [0, 0, 0] },
-  { id: "P3", allocation: [2, 1, 1], request: [1, 0, 0] },
+  { id: "P0", allocation: [1, 0, 1], request: [0, 1, 0] },
+  { id: "P1", allocation: [2, 1, 0], request: [1, 0, 1] },
+  { id: "P2", allocation: [1, 1, 1], request: [0, 0, 1] },
+  { id: "P3", allocation: [0, 0, 2], request: [1, 1, 0] },
 ];
-const EXAMPLE_DET_AVAIL = [0, 0, 0];
+const EXAMPLE_DET_AVAIL = [1, 1, 1];
 
 const EXAMPLE_BANK_PROCS: BankersProcess[] = [
-  { id: "P0", allocation: [0, 1, 0], max: [7, 5, 3] },
-  { id: "P1", allocation: [2, 0, 0], max: [3, 2, 2] },
-  { id: "P2", allocation: [3, 0, 2], max: [9, 0, 2] },
+  { id: "P0", allocation: [1, 0, 0], max: [3, 2, 2] },
+  { id: "P1", allocation: [2, 0, 0], max: [6, 1, 3] },
+  { id: "P2", allocation: [3, 0, 2], max: [9, 1, 2] },
   { id: "P3", allocation: [2, 1, 1], max: [2, 2, 2] },
   { id: "P4", allocation: [0, 0, 2], max: [4, 3, 3] },
 ];
-const EXAMPLE_BANK_AVAIL = [3, 3, 2];
+const EXAMPLE_BANK_AVAIL = [3, 2, 2];
 
 function detectDeadlock(processes: DetectionProcess[], available: number[]) {
   const n = processes.length, m = RESOURCES.length;
@@ -113,7 +113,7 @@ export default function Deadlock() {
     waitForLabel: 28,   // "P0" / "P1" ... label inside each Wait-For Graph box
     waitForDetail: 56,  // "waits for: ..." / "not waiting" line inside each Wait-For Graph box
     safePill: 29,       // process id text inside the Safe State / Unsafe State pills
-    safeArrow: 29,      // "→" arrow glyph between the Safe State / Unsafe State pills
+    safeArrow: 29,       // "→" arrow glyph between the Safe State / Unsafe State pills
     recoveryCircle: 1, // process id text inside the colored circle in "Recovery Actions Applied"
   };
 
@@ -344,7 +344,7 @@ export default function Deadlock() {
               </div>
               <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">Banker&apos;s Algorithm Table</p>
+                  <p className="font-mono text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">Banker's Algorithm Table</p>
                   <button onClick={addBankProc} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-400/30 hover:bg-cyan-500/20 transition-colors">+ Add</button>
                 </div>
                 <div className="overflow-x-auto">
@@ -528,13 +528,48 @@ export default function Deadlock() {
                 {detResult.deadlocked.map((pid) => (<span key={pid} className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-400/30">{pid}</span>))}
               </div>
             ) : (
-              <div className="flex flex-wrap items-center gap-1">
-                {detResult.safeSeq.map((pid, i) => (
-                  <span key={i} className="flex items-center gap-1">
-                    <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-400/30">{pid}</span>
-                    {i < detResult.safeSeq.length - 1 && <span className="text-slate-400">→</span>}
-                  </span>
-                ))}
+              <div className="flex flex-wrap items-center gap-3">
+                {detResult.safeSeq.map((pid, i) => {
+                  const label = String(pid);
+                  const pillWidth = Math.max(64, label.length * 14 + 48);
+                  const pillHeight = 48;
+                  const isLast = i === detResult.safeSeq.length - 1;
+                  const svgWidth = isLast ? pillWidth : pillWidth + 36;
+                  return (
+                    <svg key={pid} width={svgWidth} height={pillHeight} style={{ display: "block", overflow: "visible" }}>
+                      <rect
+                        x={0} y={0} width={pillWidth} height={pillHeight}
+                        rx={pillHeight / 2} ry={pillHeight / 2}
+                        fill="none"
+                        stroke="rgb(52, 211, 153)"
+                        strokeWidth={2}
+                      />
+                      <text
+                        x={pillWidth / 2}
+                        y={EXPORT_TEXT_Y.safePill}
+                        textAnchor="middle"
+                        fontSize="18"
+                        fontFamily="monospace"
+                        fontWeight="700"
+                        fill="rgb(16, 185, 129)"
+                      >
+                        {label}
+                      </text>
+                      {!isLast && (
+                        <text
+                          x={pillWidth + 18}
+                          y={EXPORT_TEXT_Y.safeArrow}
+                          textAnchor="middle"
+                          fontSize="20"
+                          fontFamily="monospace"
+                          fill="rgb(100, 116, 139)"
+                        >
+                          →
+                        </text>
+                      )}
+                    </svg>
+                  );
+                })}
               </div>
             )}
           </div>
